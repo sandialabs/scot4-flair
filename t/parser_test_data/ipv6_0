@@ -1,0 +1,15 @@
+{
+    text    => <<~'EOF',
+        before 1762::b03:1:af18 after
+        EOF
+
+    expect  => <<~'EOF',
+        before <span class="entity ipv6" data-entity-type="ipv6" data-entity-value="1762:0:0:0:0:b03:1:af18">1762:0:0:0:0:b03:1:af18</span> after
+        EOF
+
+    entities    => {
+        ipv6    => {
+            "1762:0:0:0:0:b03:1:af18" => 1,
+        },
+    },
+}

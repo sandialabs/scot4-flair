@@ -1,0 +1,1497 @@
+openapi: '3.0.2'
+info:
+  title: Flair Web Api
+  version: '1.0'
+  description: "Interact with the Flair Engine"
+  contact:
+    name: "Todd Bruner"
+    email: "tbruner@sandia.gov"
+servers:
+  - url: http://localhost/api/v1
+paths:
+
+  # ###########################################
+  # /admins
+  # ###########################################
+  /admins:
+    get:
+      tags:
+        - Admins
+      operationId: list_admins
+      x-mojo-to: Admins#list
+      responses:
+        '200':
+          description: Retrieve a list of Admins
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Admin'
+    post:
+      tags:
+        - Admins
+      operationId: create_admins
+      x-mojo-to: Admins#create
+      requestBody:
+        $ref: '#/components/requestBodies/CreateAdmin'
+      responses:
+        '201':
+          description: Created an Admin
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Admin'
+        '400':
+          description: Error creating Admin
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+
+  /admins/{AdminId}:
+    get:
+      tags:
+        - Admins
+      operationId: fetch_admins
+      x-mojo-to: Admins#fetch
+      parameters:
+        - $ref: '#/components/parameters/AdminId'
+      responses:
+        '200':
+          description: Retrieve Admin by id
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Admin'
+        '404':
+          description: Admin Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+    put:
+      tags:
+        - Admins
+      operationId: update_admins
+      x-mojo-to: Admins#update
+      requestBody:
+        $ref: '#/components/requestBodies/CreateAdmin'
+      responses:
+        '200':
+          description: Replace Admin
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Admin'
+        '403':
+          description: Forbidden, insufficient privilege
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+        '404':
+          description: Regex Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+        '400':
+          description: Error Replacing Regex
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+    patch:
+      tags:
+        - Admins
+      operationId: patch_admins
+      x-mojo-to: Admins#patch
+      requestBody:
+        description: Update Admins with properties to be changed
+        content:
+          application/json:
+            schema:
+              anyOf:
+                - $ref: '#/components/schemas/AdminRequiredProperties'
+                - type: object
+                  properties:
+                    Segment:
+                      nullable: true
+      responses:
+        '200':
+          description: Patch Admin
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Admin'
+        '403':
+          description: Forbidden, insufficient privilege
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+        '404':
+          description: Admin Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+        '400':
+          description: Error Replacing Admin
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+    delete:
+      tags:
+        - Admins
+      operationId: delete_admins
+      x-mojo-to: Admins#delete
+      parameters:
+        - $ref: '#/components/parameters/AdminId'
+      responses:
+        '200':
+          description: Delete Admin
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Admin'
+        '403':
+          description: Forbidden, insufficient privilege
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+        '404':
+          description: Regex Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+        '400':
+          description: Error Replacing Admin
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+
+  /admins/count:
+    get:
+      tags:
+        - Admins
+      operationId: count_admins
+      x-mojo-to: Admins#count
+      parameters:
+        - $ref: '#/components/parameters/where'
+      responses:
+        '200':
+          description: Provide count of Admin Objects matching where clause
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Count'
+
+
+  # #################################################################################
+  # /files routes
+  # #################################################################################
+  #  /files:
+  #    get:
+  #      tags:
+  #      - Files
+  #      operationId: list_files
+  #      x-mojo-to: Files#list
+  #      responses:
+  #        '200':
+  #          description: Rertieve a list of Files stored
+  #          content:
+  #            application/json:
+  #              schema:
+  #                type: array
+  #                items:
+  #                  $ref: '#/components/schemas/File'
+  #    post:
+  #      tags:
+  #        - Files
+  #      operationId: create_file
+  #      x-mojo-to: Files#create
+  #      requestBody:
+  #        $ref: '#/components/requestBodies/CreateFile'
+  #      responses:
+  #        '201':
+  #          description: Created Files
+  #          content:
+  #            application/json:
+  #              schema:
+  #                $ref: '#/components/schemas/File'
+  #        '400':
+  #          description: Error creating File
+  #          content:
+  #            application/json:
+  #              schema:
+  #                $ref: '#/components/schemas/ErrorMessage'
+  #
+  #  /files/{FileId}:
+  #    get:
+  #      tags:
+  #        - Files
+  #      operationId: fetch_files
+  #      x-mojo-to: Files#fetch
+  #      parameters:
+  #        - $ref: '#/components/parameters/FileId'
+  #      responses:
+  #        '200':
+  #          description: Retrieve File by id
+  #          content:
+  #            application/json:
+  #              schema:
+  #                $ref: '#/components/schemas/File'
+  #        '404':
+  #          description: File Not Found
+  #          content:
+  #            application/json:
+  #              schema:
+  #                $ref: '#/components/schemas/ErrorMessage'
+  #    put:
+  #      tags:
+  #        - Files
+  #      operationId: update_files
+  #      x-mojo-to: Files#update
+  #      requestBody:
+  #        $ref: '#/components/requestBodies/CreateFile'
+  #      responses:
+  #        '200':
+  #          description: Replace File
+  #          content:
+  #            application/json:
+  #              schema:
+  #                $ref: '#/components/schemas/File'
+  #        '403':
+  #          description: Forbidden, insufficient privilege
+  #          content:
+  #            application/json:
+  #              schema:
+  #                $ref: '#/components/schemas/ErrorMessage'
+  #        '404':
+  #          description: Regex Not Found
+  #          content:
+  #            application/json:
+  #              schema:
+  #                $ref: '#/components/schemas/ErrorMessage'
+  #        '400':
+  #          description: Error Replacing Regex
+  #          content:
+  #            application/json:
+  #              schema:
+  #                $ref: '#/components/schemas/ErrorMessage'
+  #    patch:
+  #      tags:
+  #        - Files
+  #      operationId: patch_files
+  #      x-mojo-to: Files#patch
+  #      requestBody:
+  #        description: Update Files with properties to be changed
+  #        content:
+  #          application/json:
+  #            schema:
+  #              anyOf:
+  #                - $ref: '#/components/schemas/FileRequiredProperties'
+  #                - type: object
+  #                  properties:
+  #                    Segment:
+  #                      nullable: true
+  #      responses:
+  #        '200':
+  #          description: Patch File
+  #          content:
+  #            application/json:
+  #              schema:
+  #                $ref: '#/components/schemas/File'
+  #        '403':
+  #          description: Forbidden, insufficient privilege
+  #          content:
+  #            application/json:
+  #              schema:
+  #                $ref: '#/components/schemas/ErrorMessage'
+  #        '404':
+  #          description: File Not Found
+  #          content:
+  #            application/json:
+  #              schema:
+  #                $ref: '#/components/schemas/ErrorMessage'
+  #        '400':
+  #          description: Error Replacing File
+  #          content:
+  #            application/json:
+  #              schema:
+  #                $ref: '#/components/schemas/ErrorMessage'
+  #    delete:
+  #      tags:
+  #        - Files
+  #      operationId: delete_files
+  #      x-mojo-to: Files#delete
+  #      parameters:
+  #        - $ref: '#/components/parameters/FileId'
+  #      responses:
+  #        '200':
+  #          description: Delete File
+  #          content:
+  #            application/json:
+  #              schema:
+  #                $ref: '#/components/schemas/File'
+  #        '403':
+  #          description: Forbidden, insufficient privilege
+  #          content:
+  #            application/json:
+  #              schema:
+  #                $ref: '#/components/schemas/ErrorMessage'
+  #        '404':
+  #          description: Regex Not Found
+  #          content:
+  #            application/json:
+  #              schema:
+  #                $ref: '#/components/schemas/ErrorMessage'
+  #        '400':
+  #          description: Error Replacing File
+  #          content:
+  #            application/json:
+  #              schema:
+  #                $ref: '#/components/schemas/ErrorMessage'
+  #
+  #  /files/count:
+  #    get:
+  #      tags:
+  #        - Files
+  #      operationId: count_files
+  #      x-mojo-to: Files#count
+  #      parameters:
+  #        - $ref: '#/components/parameters/where'
+  #      responses:
+  #        '200':
+  #          description: Provide count of File Objects matching where clause
+  #          content:
+  #            application/json:
+  #              schema:
+  #                $ref: '#/components/schemas/Count'
+  #
+  #  /download/{FileId}:
+  #    get:
+  #      tags:
+  #        - Files
+  #      operationId: download file
+  #      x-mojo-to: Files#download
+  #      parameters:
+  #        - $ref: '#/components/parameters/FileId'
+  #      responses:
+  #        '200':
+  #          description: Retrieve File Results by id
+  #
+  #        '404':
+  #          description: File Not Found
+  #          content:
+  #            application/json:
+  #              schema:
+  #                $ref: '#/components/schemas/ErrorMessage'
+
+  # #################################################################################
+  # /flair routes
+  # #################################################################################
+  /flair:
+    post:
+      tags:
+        - Flair
+      operationId: create_alertgroup_flair_job
+      x-mojo-to: FlairJob#create
+      requestBody:
+        $ref: '#/components/requestBodies/CreateFlairJob'
+      responses:
+        '202':
+          description: Initiate Flair of Object
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FlairJob'
+        '400':
+          description: Error Creating Flair Job
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+
+    get:
+      tags:
+        - Flair
+      operationId: list_flair_jobs
+      x-mojo-to: FlairJob#list
+      responses:
+        '200':
+          description: Provide List of Flair Jobs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/FlairJob'
+        '404':
+          description: No Flair Jobs Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListNotFound'
+
+  /flair/{FlairJobId}:
+    get:
+      tags:
+        - Flair
+      operationId: retrieve_flair_job_results
+      x-mojo-to: FlairJob#fetch
+      parameters:
+        - $ref: '#/components/parameters/FlairJobId'
+      responses:
+        '200':
+          description: Retrieve FlairJob Results by id
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FlairJob'
+        '404':
+          description: FlairJob Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+
+  # #################################################################################
+  # /apikeys routes
+  # #################################################################################
+  /apikeys:
+    post:
+      tags:
+        - Apikeys
+      operationId: create_apikey
+      x-mojo-to: Apikeys#create
+      requestBody:
+        $ref: '#/components/requestBodies/CreateApikey'
+      responses:
+        '201':
+          description: Created Apikeys
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Apikey'
+        '400':
+          description: Error creating Apikeys
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+    get:
+      tags:
+        - Apikeys
+      operationId: list_apikey
+      x-mojo-to: Apikeys#list
+      parameters:
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/fields'
+        - $ref: '#/components/parameters/order'
+        - $ref: '#/components/parameters/where'
+      responses:
+        '200':
+          description: Provide List of Apikey Objects
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Apikey'
+        '404':
+          description: No Regexes Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListNotFound'
+  /apikeys/count:
+    get:
+      tags:
+        - Regex
+      operationId: count_apikeys
+      x-mojo-to: Apikeys#count
+      parameters:
+        - $ref: '#/components/parameters/where'
+      responses:
+        '200':
+          description: Provide count of Apikeys Objects matching where clause
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Count'
+
+  /apikeys/{ApikeyId}:
+    get:
+      tags:
+        - Apikeys
+      operationId: fetch_apikeys
+      x-mojo-to: Apikeys#fetch
+      parameters:
+        - $ref: '#/components/parameters/ApikeyId'
+      responses:
+        '200':
+          description: Retrieve Apikey by id
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Apikey'
+        '404':
+          description: Apikey Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+    put:
+      tags:
+        - Apikeys
+      operationId: update_apikey
+      x-mojo-to: Apikeys#update
+      requestBody:
+        $ref: '#/components/requestBodies/CreateApikey'
+      responses:
+        '200':
+          description: Replace Apikey
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Apikey'
+        '403':
+          description: Forbidden, insufficient privilege
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+        '404':
+          description: Regex Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+        '400':
+          description: Error Replacing Regex
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+    patch:
+      tags:
+        - Apikeys
+      operationId: patch_apikey
+      x-mojo-to: Apikeys#patch
+      requestBody:
+        description: Update Apikeys with properties to be changed
+        content:
+          application/json:
+            schema:
+              anyOf:
+                - $ref: '#/components/schemas/ApikeyRequiredProperties'
+                - type: object
+                  properties:
+                    Segment:
+                      nullable: true
+      parameters:
+        - $ref: '#/components/parameters/ApikeyId'
+      responses:
+        '200':
+          description: Patch Apikey
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Apikey'
+        '403':
+          description: Forbidden, insufficient privilege
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+        '404':
+          description: Regex Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+        '400':
+          description: Error Replacing Regex
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+    delete:
+      tags:
+        - Apikeys
+      operationId: delete_apikeys
+      x-mojo-to: Apikeys#delete
+      parameters:
+        - $ref: '#/components/parameters/ApikeyId'
+      responses:
+        '200':
+          description: Delete Apikey
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Apikey'
+        '403':
+          description: Forbidden, insufficient privilege
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+        '404':
+          description: Regex Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+        '400':
+          description: Error Replacing Regex
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+
+  # #################################################################################
+  # /metrics routes
+  # #################################################################################
+  /metrics:
+    post:
+      tags:
+        - Metrics
+      operationId: create_metric
+      x-mojo-to: Metrics#create
+      requestBody:
+        $ref: '#/components/requestBodies/CreateMetric'
+      responses:
+        '201':
+          description: Create Metric
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Metric'
+        '400':
+          description: Error creating Metric
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+    get:
+      tags:
+        - Metrics
+      operationId: list_metrics
+      x-mojo-to: Metrics#list
+      parameters:
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/fields'
+        - $ref: '#/components/parameters/order'
+        - $ref: '#/components/parameters/where'
+      responses:
+        '200':
+          description: Provide List of Metric Objects
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Metric'
+        '404':
+          description: No Regexes Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListNotFound'
+  /metrics/count:
+    get:
+      tags:
+        - Metrics
+      operationId: count_metrics
+      x-mojo-to: Metrics#count
+      parameters:
+        - $ref: '#/components/parameters/where'
+      responses:
+        '200':
+          description: Provide count of Metric Objects matching where clause
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Count'
+
+  /metrics/{MetricId}:
+    get:
+      tags:
+        - Metrics
+      operationId: fetch_metrics
+      x-mojo-to: Metrics#fetch
+      parameters:
+        - $ref: '#/components/parameters/MetricId'
+      responses:
+        '200':
+          description: Retrieve Metric by id
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Metric'
+        '404':
+          description: Metric Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+    put:
+      tags:
+        - Metrics
+      operationId: update_metric
+      x-mojo-to: Metrics#update
+      requestBody:
+        $ref: '#/components/requestBodies/CreateMetric'
+      responses:
+        '200':
+          description: Replace Apikey
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Metric'
+        '403':
+          description: Forbidden, insufficient privilege
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+        '404':
+          description: Metric Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+        '400':
+          description: Error Replacing Metric
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+    patch:
+      tags:
+        - Metrics
+      operationId: patch_metric
+      x-mojo-to: Metrics#patch
+      requestBody:
+        description: Update Metrics with properties to be changed
+        content:
+          application/json:
+            schema:
+              anyOf:
+                - $ref: '#/components/schemas/MetricRequiredProperties'
+                - type: object
+                  properties:
+                    Segment:
+                      nullable: true
+      parameters:
+        - $ref: '#/components/parameters/MetricId'
+      responses:
+        '200':
+          description: Patch Metric
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Metric'
+        '403':
+          description: Forbidden, insufficient privilege
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+        '404':
+          description: Regex Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+        '400':
+          description: Error Replacing Regex
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+    delete:
+      tags:
+        - Metrics
+      operationId: delete_metric
+      x-mojo-to: Metrics#delete
+      parameters:
+        - $ref: '#/components/parameters/MetricId'
+      responses:
+        '200':
+          description: Delete Metric
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Metric'
+        '403':
+          description: Forbidden, insufficient privilege
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+        '404':
+          description: Metric Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+        '400':
+          description: Error Replacing Metric
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+
+  # #################################################################################
+  # /regex routes
+  # #################################################################################
+  /regex:
+    post:
+      tags:
+        - Regex
+      operationId: create_regex
+      x-mojo-to: Regex#create
+      requestBody:
+        $ref: '#/components/requestBodies/CreateRegex'
+      responses:
+        '201':
+          description: Created Regex
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Regex'
+        '400':
+          description: Error Creating Regex
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+    get:
+      tags:
+        - Regex
+      operationId: list_regex
+      x-mojo-to: Regex#list
+      parameters:
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/fields'
+        - $ref: '#/components/parameters/order'
+        - $ref: '#/components/parameters/where'
+      responses:
+        '200':
+          description: Provide List of Regex Objects
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Regex'
+        '404':
+          description: No Regexes Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListNotFound'
+
+  /regex/count:
+    get:
+      tags:
+        - Regex
+      operationId: count_regex
+      x-mojo-to: Regex#count
+      parameters:
+        - $ref: '#/components/parameters/where'
+      responses:
+        '200':
+          description: Provide count of Regex Objects matching where clause
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Count'
+
+  /regex/{RegexId}:
+    get:
+      tags:
+        - Regex
+      operationId: fetch_regex
+      x-mojo-to: Regex#fetch
+      parameters:
+        - $ref: '#/components/parameters/RegexId'
+      responses:
+        '200':
+          description: Retrieve Regex by id
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Regex'
+        '404':
+          description: Regex Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+    put:
+      tags:
+        - Regex
+      operationId: update_regex
+      x-mojo-to: Regex#update
+      requestBody:
+        $ref: '#/components/requestBodies/CreateRegex'
+      responses:
+        '200':
+          description: Replace Regex
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Regex'
+        '403':
+          description: Forbidden, insufficient privilege
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+        '404':
+          description: Regex Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+        '400':
+          description: Error Replacing Regex
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+    patch:
+      tags:
+        - Regex
+      operationId: patch_regex
+      x-mojo-to: Regex#patch
+      requestBody:
+        description: Update Regex with properties to be changed
+        content:
+          application/json:
+            schema:
+              anyOf:
+                - $ref: '#/components/schemas/RegexRequiredProperties'
+                - type: object
+                  properties:
+                    Segment:
+                      nullable: true
+      parameters:
+        - $ref: '#/components/parameters/RegexId'
+      responses:
+        '200':
+          description: Patch Regex
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Regex'
+        '403':
+          description: Forbidden, insufficient privilege
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+        '404':
+          description: Regex Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+        '400':
+          description: Error Replacing Regex
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+    delete:
+      tags:
+        - Regex
+      operationId: delete_regex
+      x-mojo-to: Regex#delete
+      parameters:
+        - $ref: '#/components/parameters/RegexId'
+      responses:
+        '200':
+          description: Delete Regex
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Regex'
+        '403':
+          description: Forbidden, insufficient privilege
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+        '404':
+          description: Regex Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+        '400':
+          description: Error Replacing Regex
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+
+# #################################################################################
+# COMPONENT DEFINITIONS
+# #################################################################################
+components:
+  schemas:
+    Count:
+      type: object
+      properties:
+        count:
+          type: integer
+
+    Id:
+      type: integer
+
+    ListNotFound:
+      type: object
+      properties:
+        code:
+          type: integer
+          format: int32
+        message:
+          type:
+            string
+
+    ErrorMessage:
+      type: object
+      properties:
+        code:
+          type: integer
+          format: int32
+        message:
+          type:
+            string
+
+    # ###########################################################################
+    # REGEX datastructures
+    # ###########################################################################
+    RegexId:
+      type: object
+      properties:
+        id:
+          type: integer
+          #    $ref: '#/components/schemas/Id'
+
+    RegexProperties:
+      type: object
+      properties:
+        name:
+          description: The name to help humans identify what regex we are talking about
+          type: string
+        description:
+          description: Describe what this Regex is trying to find
+          type: string
+        match:
+          description: this is the actual regex.  See "perldoc perlre".
+          type: string
+        entity_type:
+          description: When we match this RE, assign this type to the Entity.
+          type: string
+        regex_type:
+          description: Udef = user defined.  Core = SCOT built-in.
+          type: string
+          default: 'udef'
+          enum:
+            - core
+            - udef
+        re_order:
+          description: assign an integer so we can test regexes in user defined order.  Lower numbers get tested first.
+          type: integer
+        multiword:
+          description: Multi-word RE's have spaces or other word breaking characters in them.  This signal helps the flair engine efficiently search for these matches.
+          type: boolean
+
+    RegexRequiredProperties:
+      type: object
+      required:
+        - name
+        - description
+        - match
+        - entity_type
+        - regex_type
+        - re_order
+        - multiword
+
+    Regex:
+      allOf:
+        - $ref: '#/components/schemas/RegexId'
+        - $ref: '#/components/schemas/RegexProperties'
+        - $ref: '#/components/schemas/RegexRequiredProperties'
+
+    # ###########################################################################
+    # FlairJob datastructures
+    # ###########################################################################
+
+    FlairJobId:
+      type: object
+      properties:
+        id:
+          $ref: '#/components/schemas/Id'
+
+    FlairJobProperties:
+      type: object
+      properties:
+        id:
+          description: The SCOT ID of the item to be flaired.  FLAIR will use this to update the item in SCOT.
+          type: integer
+        type:
+          description: The type of item being flaired.  Valid types are "alertgroup", "entry", "remoteflair".  
+          type: string
+        data:
+          description: Array of items you which to have flaired from this alertgroup. OR a string entry, or remoteflair.
+          oneOf:
+            - type: object
+            - type: string
+
+    FlairJobRequiredProperties:
+      type: object
+      required:
+        - type
+        - id
+        - data
+
+    FlairJob:
+      allOf:
+        - $ref: '#/components/schemas/FlairJobId'
+        - $ref: '#/components/schemas/FlairJobProperties'
+        - $ref: '#/components/schemas/FlairJobRequiredProperties'
+
+    # ###########################################################################
+    # File datastructures
+    # ###########################################################################
+
+    FileId:
+      type: object
+      properties:
+        id:
+          $ref: '#/components/schemas/Id'
+
+    FileProperties:
+      type: object
+      properties:
+        filename:
+          type: string
+        dir:
+          type: string
+
+    FileRequiredProperties:
+      type: object
+      required:
+        - dir
+        - filename
+
+    File:
+      allOf:
+        - $ref: '#/components/schemas/FileId'
+        - $ref: '#/components/schemas/FileProperties'
+        - $ref: '#/components/schemas/FileRequiredProperties'
+
+    # ###########################################################################
+    # Admin datastructures
+    # ###########################################################################
+
+    AdminId:
+      type: object
+      properties:
+        id:
+          $ref: '#/components/schemas/Id'
+
+    AdminProperties:
+      type: object
+      properties:
+        username:
+          description: The username for this admin.
+          type: string
+        who:
+          description: The full name (GECOS) for the admin.
+          type: string
+        pwhash:
+          description: The PBKDF2 hash of the password.
+          type: string
+
+    AdminRequiredProperties:
+      type: object
+      required:
+        - username
+        - who
+        - pwhash
+
+    Admin:
+      allOf:
+        - $ref: '#/components/schemas/AdminId'
+        - $ref: '#/components/schemas/AdminProperties'
+        - $ref: '#/components/schemas/AdminRequiredProperties'
+
+    # ###########################################################################
+    # Apikey datastructures
+    # ###########################################################################
+
+    ApikeyId:
+      type: object
+      properties:
+        id:
+          $ref: '#/components/schemas/Id'
+
+    ApikeyProperties:
+      type: object
+      properties:
+        username:
+          description: Tie this apikey to this username.  For human convenience.
+          type: string
+        apikey:
+          description: the guid based api key
+          type: string
+        flairjob:
+          description: can this apikey submit flairjobs
+          type: boolean
+        regex_ro:
+          description: can this apikey read-only regex records
+          type: boolean
+        regex_crud:
+          description: can this apikey create, read, update and delete regex records
+          type: boolean
+        metrics:
+          description: can this apikey access metrics
+          type: boolean
+
+    ApikeyRequiredProperties:
+      type: object
+      required:
+        - username
+
+    Apikey:
+      allOf:
+        - $ref: '#/components/schemas/ApikeyId'
+        - $ref: '#/components/schemas/ApikeyProperties'
+        - $ref: '#/components/schemas/ApikeyRequiredProperties'
+
+    # ###########################################################################
+    # Metric datastructures
+    # ###########################################################################
+
+    MetricId:
+      type: object
+      properties:
+        id:
+          $ref: '#/components/schemas/Id'
+
+    MetricProperties:
+      type: object
+      properties:
+        year:
+          description: the 4 digit year
+          type: integer
+        month:
+          description: the month where January = 1 and December = 12
+          type: integer
+        day:
+          description: the numeric day of the month
+          type: integer
+        hour:
+          description: the hour of the day 0 = midnight
+          type: integer
+        metric:
+          description: The metric we are creating
+          type: string
+        value:
+          description: the metric value (number)
+          type: number
+
+    MetricRequiredProperties:
+      type: object
+      required:
+        - year
+        - month
+        - day
+        - hour
+        - metric
+        - value
+
+    Metric:
+      allOf:
+        - $ref: '#/components/schemas/MetricId'
+        - $ref: '#/components/schemas/MetricProperties'
+        - $ref: '#/components/schemas/MetricRequiredProperties'
+
+
+  # ##################################################################################
+  # Request datastructures
+  # ##################################################################################
+
+  requestBodies:
+
+    CreateRegex:
+      description: Create a new Regex
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: '#/components/schemas/RegexProperties'
+              - $ref: '#/components/schemas/RegexRequiredProperties'
+
+    CreateFlairJob:
+      description: Create a new Flair Job for submission
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: '#/components/schemas/FlairJobProperties'
+              - $ref: '#/components/schemas/FlairJobRequiredProperties'
+
+    CreateApikey:
+      description: Create a new Flair Apikey
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: '#/components/schemas/ApikeyRequiredProperties'
+
+    CreateFile:
+      description: Create a new Flair File
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: '#/components/schemas/FileProperties'
+              - $ref: '#/components/schemas/FileRequiredProperties'
+
+    CreateMetric:
+      description: Create a new Flair Metric
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: '#/components/schemas/MetricProperties'
+              - $ref: '#/components/schemas/MetricRequiredProperties'
+
+    CreateAdmin:
+      description: Create a new Flair Admin
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: '#/components/schemas/AdminProperties'
+              - $ref: '#/components/schemas/AdminRequiredProperties'
+
+
+  # ##################################################################################
+  # Parameter definitions
+  # ##################################################################################
+
+  parameters:
+
+    AdminId:
+      name: AdminId
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/Id'
+
+    RegexId:
+      name: RegexId
+      in: path
+      required: true
+      schema: 
+        $ref: '#/components/schemas/Id'
+
+    FileId:
+      name: FileId
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/Id'
+
+    FlairJobId:
+      name: FlairJobId
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/Id'
+
+    ApikeyId:
+      name: ApikeyId
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/Id'
+
+    MetricId:
+      name: MetricId
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/Id'
+
+    StatusId:
+      name: StatusId
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/Id'
+
+    limit:
+      name: limit
+      in: query
+      required: false
+      schema:
+        type: integer
+
+    offset:
+      name: offset
+      in: query
+      required: false
+      schema:
+        type: integer
+
+    fields:
+      name: fields
+      in: query
+      required: false
+      schema:
+        type: array
+        items:
+          type: string
+      style: form
+      explode: true
+
+    order:
+      name: order
+      in: query
+      required: false
+      schema:
+        type: array
+        items:
+          type: string
+      style: form
+      explode: true
+
+    where:
+      name: where
+      in: query
+      required: false
+      schema:
+        type: array
+        items:
+          type: string
+      style: form
+      explode: true

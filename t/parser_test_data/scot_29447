@@ -1,0 +1,14 @@
+{
+    text    => <<~'EOF',
+        funyon@folksinger:/data/scot-29447/pcap$ tshark -n -d udp.port==123,snmp -r e29447_combined.pcap -T fields -e snmp.value.int | sort | uniq -c | sort -nrk1
+        EOF
+
+    expect  => <<~'EOF',
+        funyon@folksinger:/data/scot-29447/pcap$ tshark -n -d udp.port==123,snmp -r e29447_combined.pcap -T fields -e <span class="entity domain" data-entity-type="domain" data-entity-value="snmp.value.int">snmp.value.int</span> | sort | uniq -c | sort -nrk1
+        EOF
+    entities    => {
+        domain  => {
+            "snmp.value.int" => 1,
+        },
+    },
+}

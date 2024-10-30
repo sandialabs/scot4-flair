@@ -1,0 +1,34 @@
+% layout 'default';
+% my $prefix = $ENV{'MOJO_REVERSE_PROXY'};
+<h2 class="subtitle">ApiKeys</h2>
+<script>
+    const type = "apikeys";
+    function myback() { window.location.href = "<%= $prefix %>/"; }
+    function mynew() { create_new(type); }
+</script>
+
+<input class="navButton" type="button" value="Back" onclick="myback();">
+<input class="navButton" type="button" value="New" onclick="mynew();">
+
+<table id="apikey_table" class="display" style="width: 100%">
+    <thead>
+        <th>ApikeyId</th>
+        <th>Updated</th>
+        <th>Username</th>
+        <th>Apikey</th>
+        <th>LastAccess</th>
+        <th>FlairJob</th>
+        <th>Regex_RO</th>
+        <th>Regex_CRUD</th>
+        <th>Metrics</th>
+    </thead>
+</table>
+
+<script>
+    jQuery('#apikey_table').DataTable({
+        serverSide: true,
+        ajax: '<%= $prefix %>/flair/dt/apikeys/ajax'
+    });
+</script>
+</body>
+</html>

@@ -1,0 +1,15 @@
+{
+    text    => <<~EOF,
+        https://scotdemo.com/journal/123
+        EOF
+
+    expect  => <<~EOF,
+        https://<span class="entity domain" data-entity-type="domain" data-entity-value="scotdemo.com">scotdemo.com</span>/journal/123
+        EOF
+
+    entities    => {
+        domain  => {
+            'scotdemo.com' => 1
+        },
+    },
+}

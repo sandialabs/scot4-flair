@@ -1,0 +1,18 @@
+{
+    text    => <<~'EOF',
+        todd_bruner@watermelon[.]gov
+        EOF
+
+    expect  => <<~'EOF',
+        <span class="entity email" data-entity-type="email" data-entity-value="todd_bruner@watermelon.gov">todd_bruner@<span class="entity domain" data-entity-type="domain" data-entity-value="watermelon.gov">watermelon.gov</span></span>
+        EOF
+
+    entities    => {
+        domain  => {
+            "watermelon.gov" => 1
+        },
+        email   => {
+            'todd_bruner@watermelon.gov'   => 1,
+        },
+    },
+}

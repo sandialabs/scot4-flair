@@ -1,0 +1,15 @@
+{
+    text    => <<~EOF,
+        foo.xn--p1ai
+        EOF
+
+    expect  => <<~EOF,
+        <span class="entity domain" data-entity-type="domain" data-entity-value="foo.xn--p1ai">foo.xn--p1ai</span>
+        EOF
+
+    entities    => {
+        domain  => {
+            "foo.xn--p1ai" => 1,
+        },
+    },
+}

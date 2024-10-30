@@ -1,0 +1,3 @@
+apt install libz-dev
+apt install libssl-dev
+apt install librabbitmq4 librabbitmq-dev

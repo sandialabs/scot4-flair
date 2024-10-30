@@ -1,0 +1,15 @@
+[Unit]
+Description=Flair Application Workers (minions)
+After=mysql.service
+
+[Service]
+Type=simple
+ExecStart=/opt/flair/script/Flair minion worker -m production -j 8
+SyslogIdentifier=FlairMinion
+StandardOutput=syslog
+StandardError=syslog
+KillMode=process
+
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,33 @@
+{
+    text    => <<~'EOF',
+        function Invoke-InternalMonologue
+        {
+            <#
+            .SYNOPSIS
+            Retrieves NTLMv1 challenge-response for all available users
+            #>
+
+            $Source = @"
+            using System.Text.RegularExpressions;
+                if ( foo > 0 ) {
+                    echo "this sux";
+                }
+        EOF
+
+    expect  => <<~'EOF',
+        function Invoke-InternalMonologue
+        {
+            <#
+            .SYNOPSIS
+            Retrieves NTLMv1 challenge-response for all available users
+            #>
+
+            $Source = @"
+            using System.Text.RegularExpressions;
+                if ( foo > 0 ) {
+                    echo "this sux";
+                }
+        EOF
+
+    entities    => {},
+}

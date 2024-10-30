@@ -1,0 +1,15 @@
+{
+    text    => <<~'EOF',
+        2001:41d0:2:9d17::
+        EOF
+
+    expect  => <<~'EOF',
+        <span class="entity ipv6" data-entity-type="ipv6" data-entity-value="2001:41d0:2:9d17:0:0:0:0">2001:41d0:2:9d17:0:0:0:0</span>
+        EOF
+
+    entities    => {
+        ipv6    => {
+            "2001:41d0:2:9d17:0:0:0:0" => 1,
+        },
+    },
+}

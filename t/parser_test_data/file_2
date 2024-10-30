@@ -1,0 +1,15 @@
+{
+    text    => <<~'EOF',
+        The file was haxor.py and its not a domain
+        EOF
+
+    expect  => <<~'EOF',
+        The file was <span class="entity file" data-entity-type="file" data-entity-value="haxor.py">haxor.py</span> and its not a domain
+        EOF
+
+    entities    => {
+        file    => {
+            "haxor.py" => 1,
+        },
+    },
+}

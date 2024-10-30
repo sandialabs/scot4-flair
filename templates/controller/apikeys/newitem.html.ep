@@ -1,0 +1,37 @@
+% layout 'default';
+<h2 class="subtitle">Apikeys</h2>
+
+% use Data::Dumper::Concise;
+% my @cols = (qw(username apikey flairjob regex_ro regex_crud metrics ));
+% my @boolcols = (qw(flairjob regex_ro regex_crud metrics));
+
+<script>
+    const columns = [ "username", "apikey", "flairjob", "regex_ro", "regex_crud", "metrics" ];
+    const type  = 'apikeys';
+    function mypost() { post(type, columns); }
+    function myback() { list(type); }
+</script>
+<input type="button" value="back" onclick="myback();">
+
+<table width="100%">
+    <tbody>
+            % foreach my $col (@cols) {
+            <tr>
+                <th width="20%"><%== $col %></th>
+                % if (grep {/$col/} @boolcols) {
+                <td>
+                    <select id="<%= $col %>">
+                        <option value="1">True</option>
+                        <option value="0">False</option>
+                    </select>
+                </td>
+                % } else {
+                <td><textarea id="<%= $col %>" name="<%= $col %>" style="width:100%; max-width: 100%;"></textarea></td>
+                % }
+            % }
+            </tr>
+    </tbody>
+</table>
+
+<input type="button" value="Submit Change" id="submitchange" onclick="mypost()" />
+

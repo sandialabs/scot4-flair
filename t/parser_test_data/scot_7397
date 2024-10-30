@@ -1,0 +1,18 @@
+{
+    text    => <<~EOF,
+        https://cbase.som.sunysb.edu/soap/bss.cfm
+        EOF
+
+    expect  => <<~EOF,
+        https://<span class="entity domain" data-entity-type="domain" data-entity-value="cbase.som.sunysb.edu">cbase.som.sunysb.edu</span>/soap/<span class="entity file" data-entity-type="file" data-entity-value="bss.cfm">bss.cfm</span>
+        EOF
+
+    entities    => {
+        domain  => {
+            "cbase.som.sunysb.edu" => 1
+        },
+        file    => {
+            "bss.cfm"   => 1
+        },
+    },
+}

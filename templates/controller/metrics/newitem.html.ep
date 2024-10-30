@@ -1,0 +1,28 @@
+% layout 'default';
+<h2 class="subtitle">Metrics</h2>
+
+% use Data::Dumper::Concise;
+% my @cols = (qw(year month day hour metric value));
+
+<script>
+    const columns = [ "year", "month", "day", "hour", "metric", "value" ];
+    const type  = 'metrics';
+    function mypost() { post(type, columns); }
+    function myback() { list(type); }
+</script>
+
+<input type="button" value="back" onclick="myback();">
+
+<table width="100%">
+    <tbody>
+            % foreach my $col (@cols) {
+            <tr>
+                <th width="20%"><%== $col %></th>
+                <td><textarea id="<%= $col %>" name="<%= $col %>" style="width:100%; max-width: 100%;"></textarea></td>
+            % }
+            </tr>
+    </tbody>
+</table>
+
+<input type="button" value="Submit Change" id="submitchange" onclick="mypost()" />
+

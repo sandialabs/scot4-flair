@@ -1,0 +1,15 @@
+{
+    text    => <<~EOF,
+        Foo CVE-2017-12345 Bar
+        EOF
+
+    expect  => <<~EOF,
+        Foo <span class="entity cve" data-entity-type="cve" data-entity-value="CVE-2017-12345">CVE-2017-12345</span> Bar
+        EOF
+
+    entities    => {
+        cve  => {
+            "CVE-2017-12345" => 1
+        },
+    },
+}

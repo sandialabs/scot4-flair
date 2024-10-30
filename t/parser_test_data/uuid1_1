@@ -1,0 +1,15 @@
+{
+    text    => <<~'EOF',
+        The file uuid1 was d0229d40-1274-11e8-a427-3d01d7fc9aea
+        EOF
+
+    expect  => <<~'EOF',
+        The file uuid1 was <span class="entity uuid1" data-entity-type="uuid1" data-entity-value="d0229d40-1274-11e8-a427-3d01d7fc9aea">d0229d40-1274-11e8-a427-3d01d7fc9aea</span>
+        EOF
+
+    entities    => {
+        uuid1    => {
+            "d0229d40-1274-11e8-a427-3d01d7fc9aea" => 1,
+        },
+    },
+}
