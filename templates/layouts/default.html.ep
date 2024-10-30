@@ -1,0 +1,105 @@
+% my $prefix    = $ENV{MOJO_REVERSE_PROXY};
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>FLAIR <%= title %></title>
+    <link rel="stylesheet" href="<%= $prefix %>/style.css">
+    <script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
+    <%= datatable_js %>
+    <%= datatable_css %>
+    <script>
+        function list(type) {
+            window.location.href = "<%= $prefix %>/flair/dt/"+type;
+        }
+
+        function create_new(type) {
+            window.location.href = "<%= $prefix %>/flair/new/"+type;
+        }
+
+        function buildJsonData(columns) {
+            let jsonData = {};
+            for (const n of columns) {
+                jsonData[n] = document.getElementById(n).value;
+            }
+            return jsonData;
+        }
+
+        function put(type, element_id, columns) {
+            const id = document.getElementById(element_id).value;
+            const url = '<%= $prefix %>/api/v1/'+type+'/'+id;
+            let jsonData = buildJsonData(columns);
+            fetch(url, {
+                method: 'PUT',
+                mode: 'same-origin',
+                cache: 'no-cache',
+                credentials: 'same-origin',
+                headers: { 'Content-Type': 'application/json' },
+                redirects: 'follow',
+                body: JSON.stringify(jsonData)
+            }).then((data) => {
+                console.log(data);
+                location.reload();
+            });
+        }
+
+        function del(type, element_id) {
+            const id = document.getElementById(element_id).value;
+            const url = '<%= $prefix %>/api/v1/'+type+'/'+id;
+            fetch(url, {
+                method: 'DELETE',
+                mode: 'same-origin',
+                cache: 'no-cache',
+                credentials: 'same-origin',
+                headers: { 'Content-Type': 'application/json' },
+                redirect: 'follow',
+            }).then((data) => {
+                console.log(data);
+                list(type);
+            });
+        }
+
+        function post(type, columns) {
+            const url = "<%= $prefix %>/api/v1/"+type;
+            let jsonData    = buildJsonData(columns);
+            fetch(url, {
+                method: 'POST',
+                mode: 'same-origin',
+                cache: 'no-cache',
+                credentials: 'same-origin',
+                headers: { 'Content-Type': 'application/json' },
+                redirect: 'follow',
+                body: JSON.stringify(jsonData)
+            }).then((data) => {
+                console.log(data);
+                window.location.href = "<%= $prefix %>/flair/dt/"+type;
+            });
+        }
+
+    </script>
+  </head>
+  <body>
+    <div class="pagebanner">
+        <span>
+            <img id="pagelogo" src="<%= $prefix %>/flair-page-logo.png"
+                 width="auto"
+                 height="80px">
+
+            <input type="button" class="navButton" value="Regex"        
+             onclick="window.location.href=&quot;<%= $prefix %>/flair/dt/regex&quot;">
+            <input type="button" class="navButton" value="ApiKeys"      
+                onclick="window.location.href=&quot;<%= $prefix %>/flair/dt/apikeys&quot;">
+            <input type="button" class="navButton" value="Admins"       
+                onclick="window.location.href=&quot;<%= $prefix %>/flair/dt/admins&quot;">
+            <input type="button" class="navButton" value="Metrics"      
+                onclick="window.location.href=&quot;<%= $prefix %>/flair/dt/metrics&quot;">
+            <input type="button" class="navButton" value="Minion Jobs"  
+                onclick="window.location.href=&quot;<%= $prefix %>/minion&quot;">
+            <input type="button" class="navButton" value="Swagger Docs" 
+                onclick="window.location.href=&quot;<%= $prefix %>/swagger&quot;">
+            <input type="button" class="navButton" value="Status"       
+                onclick="window.location.href=&quot;<%= $prefix %>/status&quot;"> 
+        </span>
+    </div>
+    <%= content %>
+  </body>
+</html>

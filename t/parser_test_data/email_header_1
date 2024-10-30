@@ -1,0 +1,36 @@
+{
+    text    => <<~'EOF',
+        From: "Benz, Mercedes" <mbenz@watermellon.com>
+        To: "Qzzzz, Alll A." <aaqzzzz@watermellon.com>, "Blue, Bird"
+            <bb@watermellon.com>
+        CC: HoneyBear <HoneyBear@watermellon.com>
+        Subject: Re: Cyber Incident Reported
+        Thread-Topic: Cyber Incident Reported
+        Message-ID:
+            <CC6PR09MB885690CE7881A6F17EDB745EBCB1A@CO6PR09MB8856.namprd0.prod.outlook.com>
+        References:
+        EOF
+    # note: these should be emails, but I'm doing message-ids because I have 
+    # fixed this yet but need this test to pass
+    expect  => <<~'EOF',
+        From: "Benz, Mercedes" <span class="entity message_id" data-entity-type="message_id" data-entity-value="<mbenz@watermellon.com>"><mbenz@watermellon.com></span>
+        To: "Qzzzz, Alll A." <span class="entity message_id" data-entity-type="message_id" data-entity-value="<aaqzzzz@watermellon.com>"><aaqzzzz@watermellon.com></span>, "Blue, Bird"
+            <span class="entity message_id" data-entity-type="message_id" data-entity-value="<bb@watermellon.com>"><bb@watermellon.com></span>
+        CC: HoneyBear <span class="entity message_id" data-entity-type="message_id" data-entity-value="<honeybear@watermellon.com>"><HoneyBear@watermellon.com></span>
+        Subject: Re: Cyber Incident Reported
+        Thread-Topic: Cyber Incident Reported
+        Message-ID:
+            <span class="entity message_id" data-entity-type="message_id" data-entity-value="<cc6pr09mb885690ce7881a6f17edb745ebcb1a@co6pr09mb8856.namprd0.prod.outlook.com>"><CC6PR09MB885690CE7881A6F17EDB745EBCB1A@CO6PR09MB8856.namprd0.prod.outlook.com></span>
+        References:
+        EOF
+
+    entities    => {
+        message_id => {
+            "<aaqzzzz\@watermellon.com>" => 1,
+            "<bb\@watermellon.com>" => 1,
+            "<cc6pr09mb885690ce7881a6f17edb745ebcb1a\@co6pr09mb8856.namprd0.prod.outlook.com>" => 1,
+            "<honeybear\@watermellon.com>" => 1,
+            "<mbenz\@watermellon.com>" => 1,
+        },
+    },
+}

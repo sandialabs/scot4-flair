@@ -1,0 +1,15 @@
+{
+    text    => <<~EOF,
+        Sometimes we see a stupid ipv4 prefix like ip4:65.38.172[.]37
+        EOF
+
+    expect  => <<~EOF,
+        Sometimes we see a stupid ipv4 prefix like ip4:<span class="entity ipaddr" data-entity-type="ipaddr" data-entity-value="65.38.172.37">65.38.172.37</span>
+        EOF
+
+    entities    => {
+        ipaddr  => {
+            "65.38.172.37" => 1,
+        },
+    },
+}

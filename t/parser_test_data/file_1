@@ -1,0 +1,15 @@
+{
+    text    => <<~'EOF',
+        The file was invoice.pdf.exe
+        EOF
+
+    expect  => <<~'EOF',
+        The file was <span class="entity file" data-entity-type="file" data-entity-value="invoice.pdf.exe">invoice.pdf.exe</span>
+        EOF
+
+    entities    => {
+        file    => {
+            "invoice.pdf.exe" => 1,
+        },
+    },
+}

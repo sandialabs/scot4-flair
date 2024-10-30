@@ -1,0 +1,16 @@
+[Unit]
+Description=SCOT FLAIR Engine
+
+[Service]
+Type=simple
+RemainAfterExit=yes
+SyslogIdentifier=FLAIR
+PIDFile=/var/run/flair.pid
+ExecStart=/opt/perl/bin/hypnotoad /opt/flair/script/Flair
+ExecReload=/opt/perl/bin/hypnotoad /opt/flair/script/Flair
+ExecStop=/opt/perl/bin/hypnotoad -s /opt/flair/script/Flair
+StandardOutput=syslog
+StandardError=syslog
+
+[Install]
+WantedBy=multi-user.target

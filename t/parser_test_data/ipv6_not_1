@@ -1,0 +1,11 @@
+{
+    text    => <<~'EOF',
+        toys::file
+        EOF
+
+    expect  => <<~'EOF',
+        toys::file
+        EOF
+
+    entities    => {},
+}

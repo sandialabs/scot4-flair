@@ -1,0 +1,15 @@
+{
+    text    => <<~EOF,
+        the offending ipaddr was 192[.]168(.)1{.}1
+        EOF
+
+    expect  => <<~EOF,
+        the offending ipaddr was <span class="entity ipaddr" data-entity-type="ipaddr" data-entity-value="192.168.1.1">192.168.1.1</span>
+        EOF
+
+    entities    => {
+        ipaddr  => {
+            "192.168.1.1" => 1
+        },
+    },
+}

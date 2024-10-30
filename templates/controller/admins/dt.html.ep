@@ -1,0 +1,31 @@
+% layout 'default';
+% my $prefix = $ENV{'MOJO_REVERSE_PROXY'};
+<h2 class="subtitle">Admins</h2>
+<script>
+    const type = "admins";
+    function myback() { window.location.href ="<%= $prefix %>/"; }
+    function mynew() { create_new(type); }
+</script>
+<input class="navButton" type="button" value="Back" onclick="myback();">
+<input class="navButton" type="button" value="New" onclick="mynew();">
+
+<table id="admin_table" class="display" style="width: 100%">
+    <thead>
+        <th>AdminId</th>
+        <th>Updated</th>
+        <th>Username</th>
+        <th>Who</th>
+        <th>LastLogin</th>
+        <th>LastAccess</th>
+        <th>PWHash</th>
+    </thead>
+</table>
+
+<script>
+    jQuery('#admin_table').DataTable({
+        serverSide: true,
+        ajax: '<%= $prefix %>/flair/dt/admins/ajax'
+    });
+</script>
+</body>
+</html>

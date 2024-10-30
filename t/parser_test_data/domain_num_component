@@ -1,0 +1,15 @@
+{
+    text    => <<~EOF,
+        look at the foo.10.com domain
+        EOF
+
+    expect  => <<~EOF,
+        look at the <span class="entity domain" data-entity-type="domain" data-entity-value="foo.10.com">foo.10.com</span> domain
+        EOF
+
+    entities    => {
+        domain  => {
+            "foo.10.com" => 1
+        },
+    },
+}

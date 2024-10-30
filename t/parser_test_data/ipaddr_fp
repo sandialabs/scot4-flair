@@ -1,0 +1,11 @@
+{
+    text    => <<~EOF,
+        the offending ipaddr was 192.168.1.1.a
+        EOF
+
+    expect  => <<~EOF,
+        the offending ipaddr was 192.168.1.1.a
+        EOF
+
+    entities    => {},
+}

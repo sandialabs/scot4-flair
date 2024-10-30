@@ -1,0 +1,34 @@
+% layout 'default';
+% my $prefix = $ENV{'MOJO_REVERSE_PROXY'};
+<h2 class="subtitle">Regex</h2>
+<script>
+    const type = "regex";
+    function myback() {
+        window.location.href = "<%= $prefix %>/";
+    }
+    function mynew() {
+        create_new(type);
+    }
+</script>
+<input class="navButton" type="button" value="Back" onclick="myback();">
+<input class="navButton" type="button" value="New" onclick="mynew();">
+
+<table id="regex_table" class="display" style="width: 100%">
+    <thead>
+        <th>RegexId</th>
+        <th>Name</th>
+        <th>Description</th>
+        <th>Regex</th>
+        <th>EntityType</th>
+        <th>RegexType</th>
+        <th>RegexOrder</th>
+        <th>multiword</th>
+    </thead>
+</table>
+
+<script>
+    jQuery('#regex_table').DataTable({
+        serverSide: true,
+        ajax: '<%= $prefix %>/flair/dt/regex/ajax'
+    });
+</script>

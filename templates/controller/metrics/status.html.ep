@@ -1,0 +1,95 @@
+% layout 'default';
+% my @metrics = (qw(entry_processed alertgroup_processed remoteflair_processed flairjobs_requested invalid_flairjob_request entites_found completed_flairjobs elapsed_flair_time parsed_data_size images_replaced));
+% my $height = "300px";
+% my $width  = "300px";
+% my $datum_limit = 10;
+
+<h2 class="subtitle">Status</h2>
+<script>
+    function myback() {
+        window.location.href = "<%= $prefix %>/";
+    }
+    % foreach my $metric (@metrics) {
+    %   my $ctx = $metric."_ctx";
+    %   my $chart = ucfirst($metric."_chart");
+    var <%= $metric %>;
+    var <%= $chart %>;
+    % }
+
+    function init () {
+        % foreach my $metric (@metrics) {
+        %   my $ctx = $metric."_ctx";
+        %   my $chart = ucfirst($metric."_chart");
+        var <%= $ctx %> = document.getElementById('<%= $chart %>');
+        <%= $chart %> = buildChart(<%= $ctx %>);
+        % }
+    }
+
+    function buildChart (ctx) {
+        let chart = new Chart(ctx, {
+            type: 'line',
+            data: { lables: [0], datasets [{fill: 'origin', label: 'value', data:[0], borderWidth:1}]},
+            options: { scales: { y: {beginAtZero: true }}}
+        });
+        return chart;
+    }
+
+    function addData (chart, lavel, data) {
+        if (chart.data.labels.length > <%= $datum_limit %>) {
+            var discard = chart.data.labels.shift();
+        }
+        chart.data.labels.push(label);
+        chart.data.datasets.forEach((dataset) => {
+            if (dataset.data.length > <%= $datum_limit %>) {
+                var discard = dataset.data.shift();
+            }
+            dataset.data.push(data);
+        });
+        chart.update();
+    }
+
+    window.onload = init;
+
+    var metrics = new EventSource('<%=  url_for "steam_status" %>');
+    metics.addEventListener('metrics', function (event) {
+        let json = JSON.parse(event.data);
+        updateMetricCharts(json);
+    }, false);
+
+    function updateMetricCharts (data) {
+        for (const [metkey,results] of Object.entries(data)) {
+            let chartname = metkey + "_chart";
+            let labels    = results['label'];
+            let values    = results['value'];
+            let chart     = this[chartname];
+            chart.data.labels   = labels;
+            chart.data.datasets[0].data = values;
+            chart.update();
+        }
+    }
+
+</script>
+<input class="navButton" type="button" value="Back" onclick="myback();">
+
+<table id="status_table" class="display" style="width: 100%">
+    <tr>
+    % for (my $i = 0; $i < 5; $i ++) {
+    %   my $metric = $metrics[$i];
+    %   my $mname  = $metric."_value";
+        <th><%= $metric %></th><th id="<%= $mname %>"></th>
+    % }
+    </tr>
+    <tr>
+    % for (my $i = 0; $i < 5; $i ++) {
+    %   my $metric = $metrics[$i];
+        <td colspan="2">
+            <div>
+                % my $chartname = $metric."_chart";
+                <canvas id="<%= $chartname %>" 
+                        height="<%= $height %>" 
+                        width="<%= $width %>"></canvas>
+            </div>
+        </td>
+    % }
+    </tr>
+</table>

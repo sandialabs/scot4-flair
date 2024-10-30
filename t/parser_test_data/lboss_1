@@ -1,0 +1,15 @@
+{
+    text    => <<~'EOF',
+        Stuff yr:misc_google_amp_link_s75_1 more stuff
+        EOF
+
+    expect  => <<~'EOF',
+        Stuff <span class="entity lbsig" data-entity-type="lbsig" data-entity-value="yr:misc_google_amp_link_s75_1">yr:misc_google_amp_link_s75_1</span> more stuff
+        EOF
+
+    entities    => {
+        lbsig   => {
+            "yr:misc_google_amp_link_s75_1" => 1
+        },
+    },
+}

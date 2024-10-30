@@ -1,0 +1,36 @@
+% layout 'default';
+<h2 class="subtitle">Admins</h1>
+
+% use Data::Dumper::Concise;
+% my @cols = (qw(admin_id updated username who lastlogin lastaccess pwhash));
+
+<script>
+    const columns = [ 
+        "admin_id", "updated", "username", "who", "lastlogin", "lastaccess", "pwhash" 
+    ];
+    const element_id = "admin_id";
+    const this_type  = "admins";
+    function mylist() { list(this_type); }
+    function myput() { put(this_type, element_id, columns); }
+    function mycreate_new() { create_new(this_type); }
+    function mydel() { del(this_type, element_id); }
+</script>
+
+<input type="button" value="Back" onclick="mylist();">
+<input type="button" value="New" onclick="mycreate_new();">
+<input type="button" value="Delete" onclick="mydel()">
+
+<table width="100%">
+    <tbody>
+            % foreach my $col (@cols) {
+            <tr>
+                <th width="20%"><%== $col %></th>
+                % my $val = $result->{$col};
+                <td><textarea id="<%= $col %>" name="<%= $col %>" style="width:100%; max-width: 100%;"><%= $val %></textarea></td>
+            % }
+            </tr>
+    </tbody>
+</table>
+
+<input type="button" value="Submit Change" id="submitchange" onclick="myput()" />
+

@@ -1,0 +1,28 @@
+% my $prefix = $ENV{MOJO_REVERSE_PROXY};
+<html>
+    <head>
+        <title>Flair Login</title>
+    </head>
+    <body>
+        <center>
+            <h1>FLAIR Login</h1>
+            <form action="<%= url_for 'auth' %>" method="post">
+                <table>
+                <tr>
+                    <th rowspan="2">
+                        <img src="<%= $prefix %>/flair.jpeg" alt="Flair Logo">
+                    </th>
+                    <th><label for="u">Username</label></th><td><input id="u" type="text" name="user"><br></td>
+                </tr>
+                <tr>
+                    <th><label for="p">Password</label></th><td><input id="p" type="password" name="pass"><br></td>
+                </tr>
+                <tr>
+                    <th>&nbsp;</th><th><input type="submit"></th><td><input type="reset"></td>
+                    <%= csrf_field %>
+                </tr>
+                </table>
+            </form>
+        </center>
+    </body>
+</html>

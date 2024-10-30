@@ -1,0 +1,15 @@
+{
+    text    => <<~'EOF',
+        The cidr block is 10.10.10.0/30 and has been blocked
+        EOF
+
+    expect  => <<~'EOF',
+        The cidr block is <span class="entity cidr" data-entity-type="cidr" data-entity-value="10.10.10.0/30">10.10.10.0/30</span> and has been blocked
+        EOF
+
+    entities    => {
+        cidr    => {
+            "10.10.10.0/30" => 1,
+        },
+    },
+}

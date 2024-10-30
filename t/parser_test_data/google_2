@@ -1,0 +1,15 @@
+{
+    text    => <<~EOF,
+        www{.}google{.}com
+        EOF
+
+    expect  => <<~EOF,
+        <span class="entity domain" data-entity-type="domain" data-entity-value="www.google.com">www.google.com</span>
+        EOF
+
+    entities    => {
+        domain  => {
+            "www.google.com" => 1
+        },
+    },
+}

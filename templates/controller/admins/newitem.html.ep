@@ -1,0 +1,28 @@
+% layout 'default';
+<h2 class="subtitle">Admins</h2>
+
+% use Data::Dumper::Concise;
+% my @cols = (qw(username who pwhash));
+
+<script>
+    const columns = [ "username", "who", "pwhash" ];
+    const type = "admins";
+    function mypost() { post(type, columns); }
+    function myback() { list(type); }
+</script>
+
+<input type="button" value="back" onclick="myback();">
+
+<table width="100%">
+    <tbody>
+            % foreach my $col (@cols) {
+            <tr>
+                <th width="20%"><%== $col %></th>
+                <td><textarea id="<%= $col %>" name="<%= $col %>" style="width:100%; max-width: 100%;"></textarea></td>
+            % }
+            </tr>
+    </tbody>
+</table>
+
+<input type="button" value="Submit Change" id="submitchange" onclick="mypost()" />
+

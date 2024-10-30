@@ -1,0 +1,18 @@
+{
+    text    => <<~'EOF',
+        bounces+182497-1c5d-xxxx=watermelon.edu@email.followmyhealth.com
+        EOF
+
+    expect  => <<~'EOF',
+        <span class="entity email" data-entity-type="email" data-entity-value="bounces+182497-1c5d-xxxx=watermelon.edu@email.followmyhealth.com">bounces+182497-1c5d-xxxx=watermelon.edu@<span class="entity domain" data-entity-type="domain" data-entity-value="email.followmyhealth.com">email.followmyhealth.com</span></span>
+        EOF
+
+    entities    => {
+        domain  => {
+            "email.followmyhealth.com" => 1
+        },
+        email   => {
+            'bounces+182497-1c5d-xxxx=watermelon.edu@email.followmyhealth.com'   => 1,
+        },
+    },
+}

@@ -1,0 +1,14 @@
+{
+    text    => <<~EOF,
+        
+        EOF
+
+    expect  => <<~EOF,
+        EOF
+
+    entities    => {
+        domain  => {
+            "" => 1,
+        },
+    },
+}

@@ -1,0 +1,15 @@
+{
+    text    => <<~'EOF',
+        Stuff yr:misc_vbaproj_codepage_foreign_s63_1 more stuff
+        EOF
+
+    expect  => <<~'EOF',
+        Stuff <span class="entity lbsig" data-entity-type="lbsig" data-entity-value="yr:misc_vbaproj_codepage_foreign_s63_1">yr:misc_vbaproj_codepage_foreign_s63_1</span> more stuff
+        EOF
+
+    entities    => {
+        lbsig   => {
+            "yr:misc_vbaproj_codepage_foreign_s63_1" => 1
+        },
+    },
+}
