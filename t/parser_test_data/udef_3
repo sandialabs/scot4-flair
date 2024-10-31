@@ -1,0 +1,15 @@
+{
+    text    => <<~'EOF',
+        The prof said "sydney rox"
+        EOF
+
+    expect  => <<~'EOF',
+        The prof said "<span class="entity test_entity" data-entity-type="test_entity" data-entity-value="sydney rox">sydney rox</span>"
+        EOF
+
+    entities    => {
+        test_entity    => {
+            "sydney rox" => 1,
+        },
+    },
+}

@@ -1,0 +1,15 @@
+{
+    text    => <<~'EOF',
+        this is fufoo stuff
+        EOF
+
+    expect  => <<~'EOF',
+        this is <span class="entity test_entity" data-entity-type="test_entity" data-entity-value="fufoo">fufoo</span> stuff
+        EOF
+
+    entities    => {
+        test_entity    => {
+            "fufoo" => 1,
+        },
+    },
+}

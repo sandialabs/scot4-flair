@@ -1,0 +1,15 @@
+{
+    text    => <<~'EOF',
+        new closing dispo
+        EOF
+
+    expect  => <<~'EOF',
+        <span class="entity test_entity" data-entity-type="test_entity" data-entity-value="new closing dispo">new closing dispo</span>
+        EOF
+
+    entities    => {
+        test_entity    => {
+            "new closing dispo" => 1,
+        },
+    },
+}

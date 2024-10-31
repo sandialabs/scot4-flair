@@ -59,9 +59,15 @@ sub create_pg ($self, $regex_href) {
     $self->log->debug("REGEX Create");
     $self->log->debug("regex = ", { filter => \&Dumper, value => $regex_href});
 
+    my $href            = dclone($regex_href);
+
+    if ($self->contains_whitespace($href->{match}) and ! $href->{multiword} ) {
+        $href->{multiword} = 1;
+    }
+
     my $sql = $self->getSAL;
     my ($stmt, @bind) = $sql->insert($self->tablename,
-                                     $regex_href,
+                                     $href,
                                      { returning => 'regex_id' });
     $self->log_sql(__PACKAGE__, $stmt, @bind);
 
@@ -71,9 +77,14 @@ sub create_pg ($self, $regex_href) {
 }
 
 sub create_mysql ($self, $regex_href) {
-    my $sql     = $self->getSAL;
-    my $href    = dclone($regex_href);
-    $href->{'`match`'} = delete $href->{match};
+    my $sql             = $self->getSAL;
+    my $href            = dclone($regex_href);
+
+    if ($self->contains_whitespace($href->{match}) and ! $href->{multiword} ) {
+        $href->{multiword} = 1;
+    }
+
+    $href->{'`match`'}  = delete $href->{match};
     my ($stmt, @bind)   = $sql->insert($self->tablename, $href);
     $self->log_sql(__PACKAGE__, $stmt, @bind);
     my $id  = $self->do_query($stmt, @bind)->last_insert_id;
@@ -83,6 +94,11 @@ sub create_mysql ($self, $regex_href) {
 sub create_sqlite ($self, $regex_href) {
     my $sql             = $self->getSAL;
     my $href            = dclone($regex_href);
+
+    if ($self->contains_whitespace($href->{match}) and ! $href->{multiword} ) {
+        $href->{multiword} = 1;
+    }
+
     $href->{'`match`'}  = delete $href->{match};
     my ($stmt, @bind)   = $sql->insert($self->tablename, $href);
     $self->log_sql(__PACKAGE__, $stmt, @bind);
@@ -93,6 +109,17 @@ sub create_sqlite ($self, $regex_href) {
     }
     my $id = $q->last_insert_id;
     return $self->fetch($id);
+}
+
+sub contains_whitespace ($self, $match) {
+    return $match =~ /[     ]/;
+}
+
+sub escape_spaces ($self, $match) {
+    my $escaped = dclone($match);
+    $escaped =~ s/ /\\ /g;  # space
+    $escaped =~ s/  /\\ /g; # tab
+    return $escaped;
 }
 
 sub update ($self, $id, $update_href) {
@@ -250,8 +277,12 @@ sub build_flair_regexes ($self, $opts=undef) {
 
 sub create_re ($self, $href) {
     my $match = $href->{match};
+    if ($match =~ / / and ! $href->{multiword}) {
+        $self->log->warn("Regular Expression $href->{name} contains spaces but was not marked multiword.  Overriding multiword to true.");
+        $href->{multiword} = 1;
+    }
     die "Must provide match value in RE record." unless defined $match;
-    $href->{regex} = ($href->{multiword}) ? qr/($match)/xims 
+    $href->{regex} = ($href->{multiword}) ? qr/($match)/ims 
                                           : qr/\b($match)\b/xims;
 }
 

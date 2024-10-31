@@ -16,6 +16,7 @@ CREATE TABLE IF NOT EXISTS metrics (
 
 CREATE TABLE IF NOT EXISTS regex (
     regex_id    INTEGER PRIMARY KEY AUTOINCREMENT,
+    created     TIMESTAMP  DEFAULT CURRENT_TIMESTAMP,
     updated     TIMESTAMP  DEFAULT CURRENT_TIMESTAMP,
     name        TEXT NOT NULL,
     description TEXT NOT NULL,
@@ -32,6 +33,26 @@ CREATE TRIGGER [update_regex_updated]
 BEGIN
     UPDATE regex SET updated=CURRENT_TIMESTAMP WHERE regex_id=NEW.regex_id;
 END;
+
+insert into regex values (
+    NULL, 
+    NULL, 
+    NULL, 
+    'new closing dispo', 
+    'User Defined Entity', 'new\ closing\ dispo', 'test_entity', 'udef', 101, 1);
+insert into regex values (
+    NULL, 
+    NULL, 
+    NULL, 
+    'foo', 
+    'User Defined Entity', 'fufoo', 'test_entity', 'udef', 100, 0);
+
+insert into regex values (
+    NULL, 
+    NULL, 
+    NULL, 
+    'sydney rox', 
+    'User Defined Entity', 'sydney rox', 'test_entity', 'udef', 102, 0);
 
 
 --

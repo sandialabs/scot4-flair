@@ -230,11 +230,13 @@ sub validate_data ($self, @args) {
         return undef;
     }
 
-   return {
+   my $retval = {
         type            => $type,
         id              => $id,
         data            => $data,
     };
+    $self->log->debug("Data validated, returning ", {filter=>\&Dumper, value => $retval});
+    return $retval;
 }
 
 sub calculate_size ($self, $href) {
@@ -369,6 +371,8 @@ sub process_remoteflair ($self, $job, $request_data) {
 sub walk_tree ($self, $element, $edb, $falsepos) {
     # recursively descend into html tree, look for flair when leaf node is found
     return if $element->is_empty;
+
+    $self->log->trace("Walking tree element ",{filter=>\&Dumper, value => $element});
 
     # concatenate adjacent text nodes 
     $element->normalize_content;
