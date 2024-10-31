@@ -58,6 +58,19 @@ my $result  = $apikeys->list({ fields => ['*'], where => undef });
 
 print Dumper($result);
 
+my $href    = $db->regex->create({
+    active  => 1,
+    name    => 'Test it',
+    description => 'Test spaces',
+    match   => 'Test it',
+    entity_type => 'test_mw_entity',
+    regex_type  => 'udef',
+    re_order    => 10,
+    multiword   => 0,
+});
+
+print Dumper($href);
+
 done_testing();
 exit 0;
 

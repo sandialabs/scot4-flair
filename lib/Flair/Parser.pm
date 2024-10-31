@@ -23,13 +23,15 @@ has 'public_suffix' => sub {
 };
 
 sub parse ($self, $input, $edb, $falsepos, $hint=undef) {
+    $self->log->debug("PARSING $input");
     my $clean   = $self->clean_input($input);
     # load the current set of regexes.  This can be updated async
     # so we want to pay the price of database fetch to make sure we 
     # have any new flair regexes included
-    my $regexes = $self->db->regex->build_flair_regexes();
+    my $re_aref = $self->db->regex->build_flair_regexes();
+    $self->log->debug("(parse) RE array has ".scalar(@$re_aref)." elements");
     # begin the parsing of the text, which is a recursive process
-    my @new     = $self->descend($edb, $input, $falsepos, $regexes, $hint);
+    my @new     = $self->descend($edb, $input, $falsepos, $re_aref, $hint);
     return @new;
 }
 
@@ -43,6 +45,9 @@ sub descend ($self, $edb, $input, $falsepos, $re_aref, $hint=undef) {
     # suppress deep recursion warning
     no warnings 'recursion';
 
+    $self->log->debug("Descending into $input");
+    $self->log->debug("RE array has ".scalar(@$re_aref)." elements");
+
     # recursion end condition
     return if $input eq '';
 
@@ -52,6 +57,7 @@ sub descend ($self, $edb, $input, $falsepos, $re_aref, $hint=undef) {
     # if we have a hint, then only provide that re for parsing
     # e.g.  message_id columns, that way email does not match on it.
     if (defined $hint) {
+        $self->log->debug("We have a hint!");
         @regexes    = grep { $_->{entity_type} eq $hint } @regexes;
     }
 
@@ -59,8 +65,11 @@ sub descend ($self, $edb, $input, $falsepos, $re_aref, $hint=undef) {
     REGEX:
     foreach my $re_href (@regexes) {
 
+
         my $re  = $re_href->{regex};
         my $et  = $re_href->{entity_type};
+
+        $self->log->debug("Using Regex ".$re_href->{name});
 
         # get text before, the flair, and text after match
         my ($pre, $flair, $post) = $self->find_flairable($input, 
@@ -101,7 +110,6 @@ sub find_flairable ($self, $text, $re, $et, $edb, $falsepos) {
     MATCH:
     while ( $text =~ m/$re/g ) {
 
-        $self->log->trace("Text = ".$text);
         # use perl special vars to get pre, match and post strings
         # $-[0] = index of start of match, $+[0] = index of end of match
         my $pre     = substr($text, 0, $-[0]);
@@ -116,7 +124,7 @@ sub find_flairable ($self, $text, $re, $et, $edb, $falsepos) {
         # check for false positive
         if (! defined $flairable) {
             $fp++;
-            $self->log->trace("no flairable: ");
+            $self->log->debug("no flairable: ");
             $self->log->trace("PRE was $PRE");
             # append $pre and $match to the PRE buffer
             $PRE .= $pre.$match;
@@ -128,6 +136,7 @@ sub find_flairable ($self, $text, $re, $et, $edb, $falsepos) {
         return $pre, $flairable, $post if $fp;
         return $PRE.$pre, $flairable, $post;
     }
+    $self->log->debug("No match");
     # nothing found
     return undef, undef, undef;
 }
