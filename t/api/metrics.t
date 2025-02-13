@@ -20,7 +20,7 @@ my $auth = { authorization => 'apikey flairtest123' };
 my $config = {
     database    => {
         dbtype  => 'sqlite',
-        dbfile  => 'file:/var/flair/test.db',
+        uri     => 'file:/var/flair/test.db',
         model   => {},
         migration   => '../../etc/test.sqlite.sql',
     },
@@ -31,6 +31,10 @@ my $config = {
 my $db  = Flair::Db->new(log => $log, config => $config->{database});
 my $ddf = $config->{database}->{migration};
 $db->dbh->migrations->from_file($ddf)->migrate(0)->migrate;
+
+$ENV{'S4FLAIR_DB_FILE'} = $config->{database}->{uri};
+$ENV{'S4FLAIR_DB_URI'} = $config->{database}->{uri};
+$ENV{'S4FLAIR_DB_MIGRATION'} = $config->{database}->{migration};
 
 my $t = Test::Mojo->new('Flair', $config);
 
@@ -51,9 +55,9 @@ $t->post_ok('/api/v1/metrics' => $auth => json =>  $metric_data)->status_is(201)
 my $got = $t->tx->res->json;
 cmp_deeply($got, $expected, "Created Status");
 
-#say Dumper($got);
-#done_testing();
-#exit 0;
+# say Dumper($got);
+# done_testing();
+# exit 0;
 
 my $metric_data2 = {
     year    => 2002,

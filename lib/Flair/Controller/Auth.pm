@@ -98,10 +98,18 @@ sub valid_header ($self) {
 }
 
 sub validate_header ($self, $type, $value) {
-    return $self->validate_basic($value)  if ( $type eq "basic" );
-    $self->log->debug("not basic");
-    return $self->validate_apikey($value) if ( $type eq "apikey" );
-    $self->log->debug("not apikey");
+    if ($type eq "basic") {
+        if ($self->validate_basic($value)) {
+            $self->log->debug("User validated by basic");
+            return 1;
+        }
+    }
+    if ($type eq "apikey") {
+        if ($self->validate_apikey($value)) {
+            $self->log->debug("user validated by authkey");
+            return 1;
+        }
+    }
     return undef;
 }
 
@@ -168,9 +176,10 @@ sub log_request ($self, $user=undef) {
     my @jlines = map { " "x20 . qq|--- |. $_ } split("\n",Dumper($json_no_data));
     my $msg = join("\n",
         qq|----------- REQUEST ----------|,
+        " "x20 . qq|--- Method |.$self->req->method,
         " "x20 . qq|--- Route: |.$self->url_for,
-        " "x20 . qq|--- Name: |.$self->current_route,
-        " "x20 . qq|--- Params|,
+        " "x20 . qq|--- Name:  |.$self->current_route,
+        " "x20 . qq|--- Params |,
         @plines,
         " "x20 . qq|--- JSON|,
         @jlines,

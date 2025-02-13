@@ -18,6 +18,7 @@ CREATE TABLE IF NOT EXISTS regex (
     regex_id    INTEGER PRIMARY KEY AUTOINCREMENT,
     created     TIMESTAMP  DEFAULT CURRENT_TIMESTAMP,
     updated     TIMESTAMP  DEFAULT CURRENT_TIMESTAMP,
+    active      BOOLEAN DEFAULT true,
     name        TEXT NOT NULL,
     description TEXT NOT NULL,
     match       TEXT NOT NULL UNIQUE,
@@ -38,12 +39,14 @@ insert into regex values (
     NULL, 
     NULL, 
     NULL, 
+    TRUE,
     'new closing dispo', 
-    'User Defined Entity', 'new\ closing\ dispo', 'test_entity', 'udef', 101, 1);
+    'User Defined Entity', 'new closing dispo', 'test_entity', 'udef', 101, 1);
 insert into regex values (
     NULL, 
     NULL, 
     NULL, 
+    TRUE,
     'foo', 
     'User Defined Entity', 'fufoo', 'test_entity', 'udef', 100, 0);
 
@@ -51,6 +54,7 @@ insert into regex values (
     NULL, 
     NULL, 
     NULL, 
+    TRUE,
     'sydney rox', 
     'User Defined Entity', 'sydney rox', 'test_entity', 'udef', 102, 0);
 
@@ -81,7 +85,7 @@ CREATE TABLE IF NOT EXISTS apikeys (
     apikey_id   INTEGER PRIMARY KEY AUTOINCREMENT, 
     updated     TIMESTAMP  DEFAULT CURRENT_TIMESTAMP,
     username    TEXT NOT NULL,
-    key         TEXT NOT NULL,
+    apikey      TEXT NOT NULL,
     lastaccess  TIMESTAMP  DEFAULT CURRENT_TIMESTAMP,
     flairjob    BOOLEAN,        -- create a flair job and query and read results
     regex_ro    BOOLEAN,        -- read only regexes
@@ -118,21 +122,21 @@ BEGIN
     UPDATE admins SET updated=CURRENT_TIMESTAMP WHERE admin_id=NEW.admin_id;
 END;
 
--- CREATE TABLE IF NOT EXISTS jobs (
---       job_id      INTEGER PRIMARY KEY AUTOINCREMENT,
---       updated     TIMESTAMP DEFAULT CURRENT_TIMESTAMP, 
---       duration    DECIMAL(6,4) DEFAULT 0, imgduration DECIMAL(6,4) DEFAULT 0,
---       sourcelen   INT DEFAULT 0,
---       images      INT DEFAULT 0,
---       entities    INT DEFAULT 0
---   );
--- 
--- CREATE TRIGGER [update_jobs_updated] 
---     AFTER UPDATE ON jobs FOR EACH ROW 
---     WHEN OLD.updated = NEW.updated OR OLD.updated IS NULL
--- BEGIN
---     UPDATE jobs SET updated=CURRENT_TIMESTAMP WHERE job_id=NEW.job_id;
--- END;
+CREATE TABLE IF NOT EXISTS jobs (
+      job_id      INTEGER PRIMARY KEY AUTOINCREMENT,
+      updated     TIMESTAMP DEFAULT CURRENT_TIMESTAMP, 
+      duration    DECIMAL(6,4) DEFAULT 0, imgduration DECIMAL(6,4) DEFAULT 0,
+      sourcelen   INT DEFAULT 0,
+      images      INT DEFAULT 0,
+      entities    INT DEFAULT 0
+  );
+
+CREATE TRIGGER [update_jobs_updated] 
+    AFTER UPDATE ON jobs FOR EACH ROW 
+    WHEN OLD.updated = NEW.updated OR OLD.updated IS NULL
+BEGIN
+    UPDATE jobs SET updated=CURRENT_TIMESTAMP WHERE job_id=NEW.job_id;
+END;
 
 --1 down
 DROP TABLE    IF EXISTS jobs;

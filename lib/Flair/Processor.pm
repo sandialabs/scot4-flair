@@ -6,6 +6,7 @@ use Mojo::JSON qw(encode_json);
 use Data::Dumper::Concise;
 use Flair::Db;
 use Flair::Parser;
+use Flair::Regex;
 use Flair::Util::Models;
 use Flair::Images;
 use Flair::Util::Timer;     # qw(get_timer);
@@ -31,6 +32,8 @@ has 'scotapi';
 
 has 'config';
 
+has 'minion';
+
 # the parser class necessary to apply regexes against text
 has 'parser' => sub ($self) {
     $self->log->trace("Initializing Flair Parser");
@@ -39,6 +42,7 @@ has 'parser' => sub ($self) {
     my $parser   = Flair::Parser->new(
         log     => $self->log,
         db      => $self->db,
+        scot_external_hostname   => $self->config->{scot_external_hostname},
     );
     return $parser;
 };
@@ -51,29 +55,133 @@ sub do_flairing ($self, $job, @args) {
     my $parser  = $self->parser; # init the parser
     $self->db->add_metric("flairjobs_requested", 1);
 
+    my $flair_job_test  = $args[1];
     my $request_data    = $self->validate_data(@args);
-    if ( ! defined $request_data ) {
-        $self->log->error("Received JSON was incorrect.", {filter=>\&Dumper, value=>\@args});
-        $self->db->add_metric("invalid_flairjob_request", 1);
-        return;
-    }
+    return if ( ! defined $request_data );
 
-    my $timer   = get_timer();
-    my $results = $self->process_request($job, $request_data);
-    my $elapsed = &$timer;
+    my $results   = $self->get_flair_results($job, $request_data);
+    my $send_data = $self->build_send_data($job, $request_data, $results);
+    $self->send_results($send_data, $flair_job_test);
 
-    $self->store_job_metrics($job, $elapsed, $request_data, $results);
-
-    my $send_data = $self->build_results($job, $request_data, $results);
-    $self->send_results($send_data);
-    $job->finish($send_data);
-
-    my $found        = $self->count_found_entities($results);
+    my $found = $self->count_found_entities($results);
     $self->db->add_metric("entities_found", $found);
     $self->db->add_metric("completed_flairjobs", 1);
-    $self->db->add_metric("elapsed_flair_time", $elapsed);
     $self->log->info("Completed Flairing");
+    $job->finish($send_data);
 }
+
+sub get_flair_results ($self, $job, $request_data) {
+    my $timer   = get_timer();
+    my $results = $self->process_request($job, $request_data);
+    my $elapsed = &$timer();
+    $self->store_job_metrics($job, $elapsed, $request_data, $results);
+    $self->db->add_metric("elapsed_flair_time", $elapsed);
+    return $results;
+}
+
+
+sub do_bulk ($self, $job, @args) {
+    $self->log->info("Starting Bulk Flair");
+    $self->log->debug("ARGS = ",{filter=>\&Dumper, value => \@args});
+    my @objects    = $self->fetch_targets(@args);
+    $self->log->debug("OBJECTS = ",{filter=>\&Dumper, value => \@objects});
+    my @joblist    = $self->build_joblist(@objects);
+    $self->log->debug("JOBLIST = ",{filter=>\&Dumper, value => \@joblist});
+    $self->enqueue_bulk_jobs(@joblist);
+}
+
+sub enqueue_bulk_jobs ($self, @joblist) {
+    $self->log->debug("enqueue joblist = ",{filter=>\&Dumper, value => \@joblist});
+    my $test    = $ENV{S4FLAIR_JOB_TEST};
+    foreach my $j (@joblist) {
+        my $id = $self->minion->enqueue('flair_it', [$j, $test], {expire => 3600});
+        $self->log->debug("bulk job enqueued item flair job $id");
+    }
+}
+
+sub fetch_targets ($self, @args) {
+    my @results = ();
+    my $data    = $args[0];
+    my @targets = @{$data->{targets}};
+    my @testdata;
+
+    if (defined $data->{test_data}) {
+        # replace fetch against api since this is hard to test
+        @testdata = @{$data->{test_data}};
+        return wantarray ? @testdata : \@testdata;
+    }
+
+    foreach my $item (@targets) {
+        if ( $self->not_valid_item($item) ){
+            $self->log->warn("Invalid Item Requested, skipping: ",
+                {filter=>\&Dumper, value=>$item});
+            next;
+        }
+        my $type    = $item->{type};
+        my $id      = $item->{id};
+        my $obj     = $self->scotapi->fetch($type, $id);
+
+        if (defined $obj) {
+            push @results, {
+                type    => $type,
+                id      => $id,
+                object  => $obj,
+            };
+        }
+    }
+    return wantarray ? @results : \@results;
+}
+
+
+sub build_joblist ($self, @targets) {
+    my @jobs    = ();
+
+    foreach my $item (@targets) {
+
+        my $type    = $item->{type};
+        my $id      = $item->{id};
+        my $obj     = $item->{object};
+
+        my $job_data = { id => $id, type => $type };
+
+        if ( $type eq "alertgroup" ) {
+            $job_data->{data}->{alerts} = $obj->{full_alert_data};
+        }
+        elsif ( $type eq "entry" ) {
+            $job_data->{data} = $obj->{entry_data}->{html};
+        }
+        else {
+            $self->log->warn("unsupported type $type for bulk actions, skipping...");
+            next;
+        }
+
+        push @jobs, $job_data;
+    }
+    return wantarray ? @jobs : \@jobs;
+}
+
+sub not_valid_item ($self, $item) {
+
+    if ( ! defined $item->{target_type} ) {
+        $self->log->warn("Missing target_type");
+        return 1;
+    }
+    if ( ! defined $item->{target_id} ) {
+        $self->log->warn("Missing target_id");
+        return 1;
+    }
+    my @valid_types = (qw(alertgroup entry remoteflair));
+    if ( ! grep {/$item->{target_type}/} @valid_types ) {
+        $self->log->warn("Invalid target type: $item->{target_type}");
+        return 1;
+    }
+    if ( $item->{target_id} !~ /^\d+$/) {
+        $self->log->warn("Invalid target id: $item->{target_id}");
+        return 1;
+    }
+    return undef;
+}
+
 
 sub store_job_metrics ($self, $job, $elapsed, $request_data, $results) {
     my $size    = $self->calculate_size($request_data);
@@ -91,7 +199,7 @@ sub store_job_metrics ($self, $job, $elapsed, $request_data, $results) {
     $self->db->add_metric("images_replaced", $jobrec->{images});
 }
 
-sub build_results ($self, $job, $request_data, $results) {
+sub build_send_data ($self, $job, $request_data, $results) {
     my $type        = $request_data->{type};
     my $id          = $request_data->{id};
     my $send_data   = {
@@ -109,31 +217,30 @@ sub build_results ($self, $job, $request_data, $results) {
     return $send_data;
 }
 
-sub send_results ($self, $send_data) {
+sub send_results ($self, $send_data, $flair_job_test) {
+    if ($flair_job_test) {
+        $self->log->warn("S4FLAIR_JOB_TEST set, skipping API update");
+        return;
+    }
     $self->log->trace("send data: ",{filter => \&Dumper, value =>$send_data});
     my $response    = $self->scotapi->flair_update_scot4($send_data);
     $self->log->trace("Update Response from SCOT: ",{filter=>\&Dumper, value => $response});
 }
 
 sub process_request ($self, $job, $request_data) {
-    $self->log->trace("Processing request: ",{filter=>\&Dumper, value => $request_data});
+
     my $type    = $request_data->{type};
-    $self->log->debug("Processing $type request");
     my $timer   = get_timer();
     my $results = {};
-    if ( $type eq 'entry' ) {
-        $results    = $self->process_entry($job, $request_data);
+
+    # validate request type
+    if ( ! grep {/$type/} (qw(entry alertgroup remoteflair)) ) {
+        return { error => "unsupported flair_type $type" };
     }
-    elsif ( $type eq 'alertgroup' ) {
-        $results    = $self->process_alertgroup($job, $request_data);
-    }
-    elsif ( $type eq "remoteflair") {
-        $results    = $self->process_remoteflair($job, $request_data);
-    }
-    else {
-        return { error => 'unsupported flair_type' };
-    }
-    $results->{elapsed_time} = &$timer;
+
+    my $method  = "process_$type";
+    $results    = $self->$method($job, $request_data);
+    $results->{elapsed_time} = &$timer();
     $self->db->add_metric($type."_processed", 1);
     return $results;
 }
@@ -148,8 +255,6 @@ sub count_found_entities ($self, $results) {
     }
     return $count;
 }
-
-
 
 sub validate_data ($self, @args) {
     # 
@@ -265,35 +370,9 @@ sub count_entities ($self, $results) {
     return $count;
 }
 
-sub process_alertgroup ($self, $job, $request_data) {
-
-    # given an alertgroup, split the data into alerts
-    # and process each alert
-
-    my @results = ();
-    my $edb     = {};
-    my $falsepos= {};
-
-    foreach my $alert (@{$request_data->{data}->{alerts}}) {
-        $alert->{alertgroup} = $request_data->{id};
-        my $alert_result = $self->flair_alert($alert, $falsepos);
-        push @results, $alert_result;
-        $self->merge_edb($edb, $alert_result->{entities});
-    }
-
-    $self->log->debug("Flaired Alerts Result ",{filter=>\&Dumper, value => \@results});
-
-    return {
-        type        => 'alertgroup',
-        id          => $request_data->{id},
-        entities    => $edb,
-        alerts      => \@results,
-        job_id      => $job->id,
-    };
-}
-
 sub process_entry ($self, $job, $request_data) {
 
+    $self->log->debug("Processing Entry");
     my $edb         = {};
     my $falsepos    = {};
 
@@ -336,11 +415,12 @@ sub process_entry ($self, $job, $request_data) {
         text    => $plain_data,
         entities => $edb,
         images_replaced => $replacements,
-        image_duration  => &$img_timer,
+        image_duration  => &$img_timer(),
     };
 }
 
 sub process_remoteflair ($self, $job, $request_data) {
+    $self->log->debug("Processing RemoteFlair");
     # assume that browser extension is procxied through scot api
     my $edb         = {};
     my $falsepos    = {};
@@ -503,7 +583,8 @@ sub is_predefined_entity ($self, $node, $edb) {
     return undef if $tag ne "span";
 
     my $class = $node->attr('class');
-    return undef if $class !~ /entity/i;
+    # TODO: tighten this up see issue #578
+    return undef if $class !~ /entity /i;
 
     my $type  = $node->attr('data-entity-type');
     return undef if not defined $type;
@@ -515,6 +596,37 @@ sub is_predefined_entity ($self, $node, $edb) {
     # since it is already in "flair" form
     $edb->{$type}->{$value}++;
     return 1;
+}
+
+sub process_alertgroup ($self, $job, $request_data) {
+
+    $self->log->debug("Processing Alertgroup");
+    $self->log->trace({filter=>\&Dumper, value => $request_data});
+    
+    # given an alertgroup, split the data into alerts
+    # and process each alert
+
+    my @results = ();
+    my $edb     = {};
+    my $falsepos= {};
+
+    foreach my $alert (@{$request_data->{data}->{alerts}}) {
+        $alert->{alertgroup} = $request_data->{id};
+        my $alert_result     = $self->flair_alert($alert, $falsepos);
+        push @results,         $alert_result;
+
+        $self->merge_edb($edb, $alert_result->{entities});
+    }
+
+    $self->log->debug("Flaired Alerts Result ",{filter=>\&Dumper, value => \@results});
+
+    return {
+        type        => 'alertgroup',
+        id          => $request_data->{id},
+        entities    => $edb,
+        alerts      => \@results,
+        job_id      => $job->id,
+    };
 }
 
 sub flair_alert ($self, $alert, $falsepos) {
@@ -537,26 +649,21 @@ sub flair_alert ($self, $alert, $falsepos) {
 
         # cell is an array ref of 1 or more text items
         my $cell = $data->{$column};
-        $self->log->trace("looking at column $column cell:", {filter=>\&Dumper, value=>$cell});
 
         # detect sparkline data and draw a sparkline svg if present
         # some alertgroups could have multiple sparklines
+        # contains_* function imported from Flair::Util::Sparkline, hence no $self->
         if (contains_multi_row_sparklines($cell)) {
-            $self->log->debug("Multi-row sparklines detected in columne $column: $cell");
-            my $table     = $self->build_multi_sparkline_table($cell);
-            $self->log->debug("---- TABLE built ----");
-            $self->log->debug({filter => \&Dumper, value => $table});
-            my $tresult   = $self->flair_table($alert, $column, $table, $falsepos);
-            $flair->{$column} = $tresult->{flair};
-            $text->{$column}  = $tresult->{text};
+            my $table           = $self->build_multi_sparkline_table($cell);
+            my $tresult         = $self->flair_table($alert, $column, $table, $falsepos);
+            $flair->{$column}   = $tresult->{flair};
+            $text->{$column}    = $tresult->{text};
             $self->merge_edb($alert_edb, $tresult->{entities});
             next COLUMN;
         }
         elsif (contains_sparkline($cell)) {
-            $self->log->debug("Sparkline detected in cell with column $column: $cell");
-            my $sparkline = data_to_sparkline_svg($cell);
-            $self->log->debug("converted to $sparkline");
-            $flair->{$column} = $sparkline;
+            my $sparkline       = data_to_sparkline_svg($cell);
+            $flair->{$column}   = $sparkline;
             # single sparkline data cells need no additional flairing
             next COLUMN;
         }
@@ -583,6 +690,7 @@ sub flair_alert ($self, $alert, $falsepos) {
         entities    => $alert_edb,
     };
 }
+
 
 sub build_multi_sparkline_table ($self, $data) {
     my $table     = HTML::Element->new('table');
@@ -637,17 +745,19 @@ sub flair_cell ($self, $alert, $column, $cell, $falsepos) {
 
     foreach my $item (@$cell) {
         next if $self->item_is_empty($item);
-        # process normal columns
+
+        my $item_result;
         if ( $cell_type eq "normal" ) {
-            my $item_result = $self->flair_normal_item($self->clean_html($item), $falsepos);
-            $self->merge_edb($edb, $item_result->{edb});
-            push @flair, $item_result->{flair};
-            push @text,  $item_result->{text};
-            next;
+            # process normal columns
+            $item_result = $self->flair_normal_cell($self->clean_html($item), $falsepos);
+        }
+        else {
+            # OK, we have a "special" cell type
+            # sentinel uri or message_id, for example
+            $item_result = $self->flair_special_cell($alert, $cell_type, $column, 
+                                                        $item, $falsepos);
         }
 
-        # OK, we have a "special" cell type
-        my $item_result = $self->flair_special_item($alert, $cell_type, $column, $item, $falsepos);
         # add the results to the cell
         $self->merge_edb($edb, $item_result->{edb});
         # return the cell results to flair_alert
@@ -659,12 +769,6 @@ sub flair_cell ($self, $alert, $column, $cell, $falsepos) {
     return {
         flair   => \@flair,
         text    => \@text,
-        entities=> $edb,
-    };
-    # stringify array return
-    return {
-        flair   => $self->stringify_array(\@flair),
-        text    => $self->stringify_array(\@text),
         entities=> $edb,
     };
 }
@@ -698,7 +802,7 @@ sub contains_table_html ($self, $item) {
     return grep { /<table.*>/ } ($item); 
 }
 
-sub flair_normal_item ($self, $input, $falsepos) {
+sub flair_normal_cell ($self, $input, $falsepos) {
     # send "normal" text to the parser to iterate through regular
     # expression set.  
     my $edb   = {};
@@ -712,6 +816,16 @@ sub flair_normal_item ($self, $input, $falsepos) {
             text    => $input,
             edb     => $edb,
         };
+    }
+    if ($self->is_img($input)) {
+        $self->log->debug("Img detected: time to img munge");
+        # XXX
+        my $tree        = build_html_tree($input);
+        my $imgmunger   = Flair::Images->new(log => $self->log, 
+                                          scotapi => $self->scotapi,
+                                          config => $self->config);
+        my $replace_count   = $imgmunger->process($tree);
+        $input   = ($replace_count) ? $tree->as_HTML : $input;
     }
     my $flair = $self->parser->parse_stringified($input, $edb, $falsepos);
     return {
@@ -748,7 +862,7 @@ sub flair_table_item ($self, $input, $falsepos) {
 }
 
 
-sub flair_special_item ($self, $alert, $cell_type, $column, $item, $falsepos) {
+sub flair_special_cell ($self, $alert, $cell_type, $column, $item, $falsepos) {
     my $edb     = {};
     my $text    = $item; # assume we have text
     my $flair;
@@ -778,9 +892,17 @@ sub flair_special_item ($self, $alert, $cell_type, $column, $item, $falsepos) {
 }
 
 sub flair_message_id_type ($self, $item, $falsepos) {
-    my $edb = {};
+    my $edb     = {};
     my $flair   = $self->parser->parse_with_hint('message_id', $item, $edb, $falsepos);
-    return { flair => $flair, text => $item, edb => $edb };
+    return { 
+        flair => $flair, 
+        text  => $item, 
+        edb   => $edb 
+    };
+}
+
+sub is_img ($self, $cell) {
+    return $cell =~ /<img src=.*>/;
 }
 
 sub is_anchor ($self, $data) {

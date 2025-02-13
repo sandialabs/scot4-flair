@@ -2,6 +2,7 @@
 
 use Mojo::Base -strict;
 use Test::Most;
+use Test::Mojo;
 use Data::Dumper::Concise;
 use HTML::Element;
 
@@ -12,7 +13,7 @@ use Flair::Util::HTML;
 use Flair::Util::Sparkline;
 use Flair::Db;
 
-system("rm /var/flair/test.db");
+system("rm -f /var/flair/test.db");
 
 log_init('testlog.conf');
 my $log = get_logger('Flair');
@@ -23,11 +24,12 @@ my $config = {
         user    => '',
         pass    => '',
         apikey  => '',
-        uri_root    => '',
+        uri_root    => 'https://scot.watermelon.com',
         insecure    => 1,
     },
     database    => {
         dbtype  => 'sqlite',
+        dbfile  => '/var/flair/test.db',
         uri     => 'file:/var/flair/test.db', 
         model   => {
             regex   => {},
@@ -39,6 +41,11 @@ my $config = {
     },
 };
 
+$ENV{'S4FLAIR_DB_FILE'} = $config->{database}->{dbfile};
+$ENV{'S4FLAIR_DB_URI'} = $config->{database}->{uri};
+$ENV{'S4FLAIR_DB_MIGRATION'} = $config->{database}->{migration};
+$ENV{S4FLAIR_JOB_TEST} = 1;
+
 my $migfile = $config->{database}->{migration};
 my $db  = Flair::Db->new(log => $log, config  => $config->{database});
 is (ref($db), "Flair::Db", "Got DB connection") or die "unable to connect to db";
@@ -47,8 +54,13 @@ ok ($db->dbh->migrations->from_file($migfile)->migrate(0)->migrate,
 
 # leaving out scotapi for now, will test seperately
 
-my $proc = Flair::Processor->new(log => $log, db => $db);
+my $t = Test::Mojo->new('Flair');
+my $proc = Flair::Processor->new(log => $log, db => $db, config => $config, minion=>$t->app->minion);
 is (ref($proc), "Flair::Processor", "instatiated processor") or die "Failed to instantiate Processor";
+
+ bulk_tests();
+ done_testing();
+ exit 0;
 
  data_validation_tests();
  leaf_node_detection();
@@ -64,7 +76,8 @@ is (ref($proc), "Flair::Processor", "instatiated processor") or die "Failed to i
  node_is_noflair_section();
  node_flair_override_section();
  sparkline_tests();
-multi_row_spark_alert();
+ multi_row_spark_alert();
+ images_in_alerts();
 
 sub xss_tests {
     my $html    = q{<p>&lt;script&gt;alert(1);&lt;/script%gt;</p>};
@@ -316,7 +329,72 @@ EOF
     }};
     my $fp;
     my $result  = $proc->flair_alert($alert, $fp);
-    say Dumper $result;
+    print Dumper($result);
+    is ($result->{entities}->{domain}->{'dns101.registrar-servers.com'}, 1, "Domain Entity found");
+    my $expected_lri = '<div><table><tr></tr><tr><th>IOC</th><th>Indices</th><th>Hits</th><th>Sparkline</th></tr><tr><td style="border: 1px solid black; border-collapse: collapse;"><span class="entity domain" data-entity-type="domain" data-entity-value="dns101.registrar-servers.com">dns101.registrar-servers.com</span></td><td style="border: 1px solid black; border-collapse: collapse;">lc_nm_dns<br />dns_answer<br />lc_ca_dns<br />dns_query</td><td style="border: 1px solid black; border-collapse: collapse;">365</td><td style="border: 1px solid black; border-collapse: collapse;"><svg height="12" viewbox="0 -11 99 12" width="99" xmlns="http://www.w3.org/2000/svg"><polyline fill="none" points="0,-10 2,-0.25 4,-0.31 6,-0.37 8,-0.43 10,-0.31 12,-0.25 14,-0.25 16,-0.37 18,-0.37 20,-0.31 22,0 24,-0.19 26,-0.19 28,0 30,-0.12 32,-0.37 34,-0.31 36,-0.19 38,-0.06 40,-0.06 42,-0.25 44,-0.25 46,-0.31 48,-0.43 50,-0.43 52,-0.06 54,0 56,0 58,-0.19 60,-0.25 62,-0.37 64,-0.06 66,-0.19 68,-0.19 70,-0.37 72,-0.43 74,-0.37 76,-0.43 78,-0.49 80,-0.31 82,-0.25 84,-0.19 86,-0.43 88,-0.25 90,-0.25 92,-0.25 94,-0.25 96,-0.12 98,-0.37" stroke="blue" stroke-linecap="round" stroke-width="1"></polyline></svg></td></tr><tr><td style="border: 1px solid black; border-collapse: collapse;"><span class="entity ipaddr" data-entity-type="ipaddr" data-entity-value="146.70.53.153">146.70.53.153</span></td><td style="border: 1px solid black; border-collapse: collapse;">lc_nm_udp<br />lc_nm_tcp<br />zeek_conn_scan</td><td style="border: 1px solid black; border-collapse: collapse;">4</td><td style="border: 1px solid black; border-collapse: collapse;"><svg height="12" viewbox="0 -11 99 12" width="99" xmlns="http://www.w3.org/2000/svg"><polyline fill="none" points="0,-10 2,0 4,0 6,0 8,0 10,0 12,0 14,0 16,0 18,-3.33 20,0 22,0 24,0 26,0 28,0 30,0 32,0 34,0 36,0 38,0 40,0 42,0 44,0 46,0 48,0 50,0 52,0 54,0 56,0 58,0 60,0 62,0 64,0 66,0 68,0 70,0 72,0 74,0 76,0 78,0 80,0 82,0 84,0 86,0 88,0 90,0 92,0 94,0 96,0 98,0" stroke="blue" stroke-linecap="round" stroke-width="1"></polyline></svg></td></tr></table></div>';
+    my $got = $result->{flair_data}->{"LRI Hit Information"}->[0];
+    is ($expected_lri, $got, "Created table correctly with sparkline");
+
+#    my @e_array = split(//, $expected_lri);
+#    my @g_array = split(//, $got);
+#
+#    for (my $i = 0; $i < scalar(@e_array); $i++) {
+#        if ($e_array[$i] eq $g_array[$i]) {
+#            print $e_array[$i];
+#            next;
+#        }
+#        print "\n Element $i differs: expected $e_array[$i] got $g_array[$i]\n";
+#        last;
+#    }
+}
+
+
+sub images_in_alerts {
+    my $imgmunger   = Flair::Images->new(log => $log);
+    # my $cell   = '<img src="https://www.sandia.gov/app/uploads/sites/72/2021/06/scot.png"/>';
+    my $cell   = '<img src="https://images.squarespace-cdn.com/content/v1/52b60f24e4b067a0f59876d1/1587588018088-OEP235P8CDESX3CIAONY/RiosLawLogo.jpg?format=1500w"/>';
+    my $tree   = build_html_tree($cell);
+    my @images  = @{$tree->extract_links('img')};
+    for my $image (@images) {
+        # print Dumper($image);
+        my $newuri  = "/api/v1/file/download/123";
+       $imgmunger->rewrite_img_element($image, $newuri);
+    }
+    is($tree->as_HTML, '<html><head></head><body><img alt="-Locally cached copy of https://images.squarespace-cdn.com/content/v1/52b60f24e4b067a0f59876d1/1587588018088-OEP235P8CDESX3CIAONY/RiosLawLogo.jpg?format=1500w" src="/api/v1/file/download/123" /></body></html>', 'rewrote img element');
+}
+
+sub bulk_tests {
+    my @joblist = (
+        {
+            id      => 100,
+            type    => 'alertgroup',
+            data    => {
+                alerts => [
+                    { id => 1, row => { foo => 1, bar => 2, boom => 3, baz => 4 }},
+                    { id => 2, row => { foo => 2, bar => 3, boom => 4, baz => 5 }},
+                ],
+            },
+        },
+        {
+            id      => 101,
+            type    => 'alertgroup',
+            data    => {
+                alerts => [
+                    { id => 3, row => { foo => 1, bar => 2, boom => 3, baz => 4 }},
+                    { id => 4, row => { foo => 2, bar => 3, boom => 4, baz => 5 }},
+                ],
+            },
+        },
+    );
+
+    $proc->enqueue_bulk_jobs((\@joblist,1));
+    $t->app->minion->perform_jobs;
+}
+
+sub udef_tests {
+    $db->regex->create({
+
+    });
 }
 
 

@@ -5,6 +5,8 @@ use strict;
 use warnings;
 use Data::Dumper::Concise;
 use HTML::Entities;
+# add this when we can add modules to perl image
+# use Lingua::StopWords qw(getStopWords);
 use Try::Tiny;
 use Mojo::Base 'Flair::Controller::Api', -signatures;
 use Carp qw(longmess);
@@ -25,6 +27,13 @@ sub create ($self) {
         my $id      = $self->db->regex->regex_exists($match);
 
         if ( ! $id ) {
+            if ($self->is_stop_word($match)) {
+                $self->log->debug("Refusing to add a stopword $match to User defined entities");
+                $self->render(
+                    status  => 409,
+                    json    => { error => "Match is a stop word" },
+                );
+            }
             my $href = $self->db->regex->create($json);
             $self->log->debug("href = ",{filter=>\&Dumper, value => $href});
 
@@ -46,6 +55,13 @@ sub create ($self) {
         $self->log->error(longmess);
     };
     return;
+}
+
+sub is_stop_word ($self, $match) {
+    return undef;
+    # when Lingua::StopWords is added to perl build we can do this
+    # my $stopwords = getStopWords('en');
+    # return grep { $stopwords->{$_} } $match;
 }
 
 sub list ($self) {

@@ -2,6 +2,7 @@ package Flair::Parser;
 
 use lib '../../lib';
 use Data::Dumper::Concise;
+use Flair::Regex;
 use Flair::Util::Timer;
 use Domain::PublicSuffix;
 use Net::IPv6Addr;
@@ -14,6 +15,7 @@ use Try::Tiny;
 
 has 'db';
 has 'log';
+has 'scot_external_hostname';
 
 # used to detect false positive matches for domains
 has 'public_suffix' => sub {
@@ -23,21 +25,36 @@ has 'public_suffix' => sub {
 };
 
 sub parse ($self, $input, $edb, $falsepos, $hint=undef) {
-    $self->log->debug("PARSING $input");
     my $clean   = $self->clean_input($input);
+    $self->log->debug("PARSING $clean");
+
     # load the current set of regexes.  This can be updated async
     # so we want to pay the price of database fetch to make sure we 
     # have any new flair regexes included
-    my $re_aref = $self->db->regex->build_flair_regexes();
-    $self->log->debug("(parse) RE array has ".scalar(@$re_aref)." elements");
+    #
+    my @regexes = $self->get_regex_set();
+
     # begin the parsing of the text, which is a recursive process
-    my @new     = $self->descend($edb, $input, $falsepos, $re_aref, $hint);
+    my @new     = $self->descend($edb, $input, $falsepos, \@regexes, $hint);
     return @new;
 }
 
+sub get_regex_set ($self) {
+    my $remodule    = Flair::Regex->new(
+        scot_external_hostname => $self->scot_external_hostname
+    );
+    my @core    = $remodule->get_core_regex_array;
+    my @udef    = $self->db->regex->load_user_def_re();
+    my @sorted  = sort { $a->{re_order} <=> $b->{re_order} } @core, @udef;
+    $self->log->debug("Loaded ".scalar(@sorted)." regular expressions");
+    my $i = 1;
+    # $self->log->trace("Sorted Regex Set => ",{filter=>\&Dumper, value=>\@sorted});
+    return wantarray ? @sorted : \@sorted;
+}
+
 sub clean_input($self, $text) {
-    # shim if we should need to some cleaning, like encoding utf8
     my $clean   = $text;
+    # shim if we should need to some cleaning, like encoding utf8
     return $clean;
 }
 
@@ -45,8 +62,7 @@ sub descend ($self, $edb, $input, $falsepos, $re_aref, $hint=undef) {
     # suppress deep recursion warning
     no warnings 'recursion';
 
-    $self->log->debug("Descending into $input");
-    $self->log->debug("RE array has ".scalar(@$re_aref)." elements");
+    $self->log->debug("Descending into: $input");
 
     # recursion end condition
     return if $input eq '';
@@ -69,7 +85,10 @@ sub descend ($self, $edb, $input, $falsepos, $re_aref, $hint=undef) {
         my $re  = $re_href->{regex};
         my $et  = $re_href->{entity_type};
 
-        $self->log->debug("Using Regex ".$re_href->{name});
+        my $re_name = $re_href->{name};
+        my $re_order= $re_href->{re_order};
+
+        $self->log->trace("RE record: ", {filter=>\&Dumper, value=> $re});
 
         # get text before, the flair, and text after match
         my ($pre, $flair, $post) = $self->find_flairable($input, 
@@ -132,11 +151,11 @@ sub find_flairable ($self, $text, $re, $et, $edb, $falsepos) {
             next MATCH;
         }
         # return the flairable
-        $self->log->trace("PRE.pre = ".$PRE.$pre);
+        $self->log->debug("Found flairable: $flairable");
         return $pre, $flairable, $post if $fp;
         return $PRE.$pre, $flairable, $post;
     }
-    $self->log->debug("No match");
+    $self->log->trace("No flairables in $text");
     # nothing found
     return undef, undef, undef;
 }
@@ -144,14 +163,21 @@ sub find_flairable ($self, $text, $re, $et, $edb, $falsepos) {
 sub post_match_actions ($self, $match, $et, $edb, $falsepos) {
 
     #  special cases
-    return $self->cidr_action($match, $edb, $falsepos)          if $et eq "cidr";
-    return $self->domain_action($match, $edb, $falsepos)        if $et eq "domain";
-    return $self->ipaddr_action($match, $edb, $falsepos)        if $et eq "ipaddr";
-    return $self->ipv6_action($match, $edb, $falsepos)          if $et eq "ipv6";
-    return $self->suricata_ipv6_action($match, $edb, $falsepos) if $et eq "suricata_ipv6";
-    return $self->email_action($match, $edb, $falsepos)         if $et eq "email";
-    return $self->message_id_action($match, $edb, $falsepos)    if $et eq "message_id";
-    return $self->cve_action($match, $edb, $falsepos)           if $et eq "cve";
+    return $self->cidr_action($match, $edb, $falsepos)      if $et eq "cidr";
+    return $self->domain_action($match, $edb, $falsepos)    if $et eq "domain";
+    return $self->ipaddr_action($match, $edb, $falsepos)    if $et eq "ipaddr";
+    return $self->ipv6_action($match, $edb, $falsepos)      if $et eq "ipv6";
+    return $self->email_action($match, $edb, $falsepos)     if $et eq "email";
+    return $self->cve_action($match, $edb, $falsepos)       if $et eq "cve";
+    return $self->internal_link($match, $edb, $falsepos)    if $et eq "internal_link";
+    return $self->uri_action($match, $edb, $falsepos)       if $et eq "uri";
+    return $self->scot_uri_action($match, $edb, $falsepos)  if $et eq "scot_uri";
+    return $self->message_id_action($match, 
+                                    $edb, 
+                                    $falsepos)    if $et eq "message_id";
+    return $self->suricata_ipv6_action($match, 
+                                       $edb, 
+                                       $falsepos) if $et eq "suricata_ipv6";
 
     # default case
     my $span    = $self->create_span($match, $et);
@@ -207,6 +233,70 @@ sub domain_action ($self, $match, $edb, $falsepos) {
         return undef;
     };
 }
+
+
+
+sub internal_link ($self, $match, $edb, $falsepos) {
+    my $anchor  =  $self->build_scot_anchor($match);
+    my $span = HTML::Element->new(
+        'span',
+        'class'             => "ilink",
+    );
+    $span->push_content($anchor);
+    return $span;
+}
+
+
+sub build_scot_anchor ($self, $match) {
+    my ($junk, $type, $number) = split(/-/, $match);
+    my $uri = join('/', '/#', lc($type), $number);
+    my $anchor = HTML::Element->new('a', href => $uri);
+    $anchor->push_content("SCOT-$type-$number");
+    return $anchor;
+}
+
+sub get_uri_parts ($self, $uri) {
+    my ($scheme, $remainder) = split('://', $uri);
+    $self->log->debug("scheme is $scheme");
+    my @parts = split('/',$remainder);
+    $self->log->debug("parts are ",{filter=>\&Dumper, value => \@parts});
+    my $domain = shift @parts;
+    my $path = '/'.join('/', @parts);
+    return $scheme, $domain, $path;
+}
+
+sub matches_api_domain ($self, $api_parts, $link_parts) {
+    my $root_domain = $api_parts->[1];
+    my $link_domain = $link_parts->[1];
+    # possible  domain situations:
+    # root          link
+    # ----          ----
+    # scot.foo.com  scot.foo.com    case 0
+    # scot          scot            case 0
+    # scot          scot.foo.com    case 1
+    # scot.foo.com  scot            case 2
+    #
+    if ($link_domain eq $root_domain) {
+        # case 0
+        return 1;
+    }
+    if ($link_domain =~ /\./) {
+        # case 1
+        my $host = (split(/\./, $link_domain))[0];   # get 1st element after splitting on .
+        if ($host eq $root_domain) {
+            return 1;
+        }
+    }
+    if ($root_domain =~ /\./) {
+        # case 2
+        my $root_host = (split(/\./, $root_domain))[0];
+        if ($root_host eq $link_domain) {
+            return 1;
+        }
+    }
+    return undef;   # the servers do not match
+}
+
 
 sub previous_false_positive_domain ($self, $edb, $domain, $falsepos) {
     # $self->log->trace("domain = $domain FP = ", {filter=>\&Dumper, value => $falsepos});
@@ -274,6 +364,43 @@ sub suricata_ipv6_action ($self, $match, $edb, $falsepos) {
     return $pspan;
 }
 
+sub scot_uri_action ($self, $match, $edb, $falsepos) {
+    $self->log->debug("checking for scot_external_hostname: ".$self->scot_external_hostname);
+    my ($scheme, $domain, $path) = $self->get_uri_parts($match);
+    my $rebuilt = "$scheme://$domain$path";
+    my $anchor = HTML::Element->new('a', href => $rebuilt);
+    my @path_parts  = split('/', $path);
+    my $type    = ucfirst(lc($path_parts[2]));
+    my $number  = $path_parts[3];
+    my $short  = "SCOT-$type-$number";
+    $anchor->push_content($short);
+    my $span = HTML::Element->new(
+        'span',
+        'class'             => "ilink",
+    );
+    $span->push_content($anchor);
+    $self->log->debug("Replacing SCOT URI with ".$span->as_HTML);
+    return $span;
+}
+    
+
+sub uri_action ($self, $match, $edb, $falsepos) {
+    $self->log->debug("found uri = $match"); 
+    my ($scheme, $domain, $path) = $self->get_uri_parts($match);
+    $path =~ s/[,\.]*$//;
+
+    my $domain_span = $self->domain_action($domain, $edb, $falsepos);
+    my $uri_span    = HTML::Element->new(
+        'span',
+        'class'             => 'entity uri',
+        'data-entity-type'  => 'uri',
+        'data-entity-value' => $match,
+    );
+    $uri_span->push_content($scheme, '://', $domain_span, $path);
+    $self->add_entity($edb, $match, 'uri');
+    return $uri_span;
+}
+
 sub email_action ($self, $match, $edb,$falsepos) {
     # create a nested entity span <user@<domain>>
     my ($user, $domain) = split(/\@/, $match);
@@ -309,6 +436,7 @@ sub message_id_action ($self, $match, $edb,$falsepos) {
 
 sub create_span ($self, $match, $et) {
     # wrap match string in a span
+    $self->log->debug("creating entity span for $match type $et");
     my $element = HTML::Element->new(
         'span',
         'class'             => "entity $et",

@@ -397,6 +397,28 @@ paths:
   # #################################################################################
   # /flair routes
   # #################################################################################
+  /bulkflair:
+    post:
+      tags:
+        - Flair
+      operationId: create_bulk_flair_job
+      x-mojo-to: FlairJob#bulk_flair
+      requestBody:
+        $ref: '#/components/requestBodies/CreateBulkFlairJob'
+      responses:
+        '202':
+          description: Flair list of objects
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BulkFlairJob'
+        '400':
+          description: Error Creating Bulk Flair Job
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+          
   /flair:
     post:
       tags:
@@ -1176,6 +1198,22 @@ components:
         - $ref: '#/components/schemas/FlairJobProperties'
         - $ref: '#/components/schemas/FlairJobRequiredProperties'
 
+    BulkFlairJobProperties:
+      type: object
+      properties:
+        targets:
+          type: array
+
+    BulkFlairJobRequiredProperties:
+      type: object
+
+    BulkFlairJob:
+      allOf:
+        - $ref: '#/components/schemas/FlairJobId'
+        - $ref: '#/components/schemas/BulkFlairJobProperties'
+        - $ref: '#/components/schemas/BulkFlairJobRequiredProperties'
+
+
     # ###########################################################################
     # File datastructures
     # ###########################################################################
@@ -1357,6 +1395,15 @@ components:
             allOf:
               - $ref: '#/components/schemas/FlairJobProperties'
               - $ref: '#/components/schemas/FlairJobRequiredProperties'
+
+    CreateBulkFlairJob:
+      description: Create a new Bulk Flair Job for submission
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: '#/components/schemas/BulkFlairJobProperties'
+              - $ref: '#/components/schemas/BulkFlairJobRequiredProperties'
 
     CreateApikey:
       description: Create a new Flair Apikey

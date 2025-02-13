@@ -2,6 +2,7 @@ package Flair::Model::Regex;
 
 use lib '../../../lib';
 use Flair::Regex;
+use Flair::Util::LoadHashFile;
 use Data::Dumper::Concise;
 use SQL::Abstract::Limit;
 use Try::Tiny;
@@ -33,7 +34,7 @@ sub list ($self, $opts) {
 
 sub fetch ($self, $id) {
 
-    $self->log->debug("fetch = $id");
+    $self->log->trace("fetch = $id");
    # my $stmt    = "SELECT * FROM ".$self->tablename." WHERE id = ?";
    # my @bind    = ($id);
 
@@ -234,21 +235,9 @@ sub count ($self, $where) {
     return $href;
 }
 
-sub load_core_re ($self) {
-    my @re      = ();
-    my $core    = Flair::Regex->new();
-    my @corere  = $core->core_regex_names;
-
-    foreach my $re_name (@corere) {
-        my $href    = $core->$re_name;
-        push @re, $href;
-    }
-    my @sorted  = sort { $a->{re_order} <=> $b->{re_order} } @re;
-    return wantarray ? @sorted : \@sorted;
-
-}
 
 sub load_user_def_re ($self, $opts=undef) {
+    $self->log->debug("Loading UDEF RE");
     my @cooked  = ();
     if (not defined $opts) {
         $opts   = {
@@ -270,31 +259,40 @@ sub load_user_def_re ($self, $opts=undef) {
 
 
 sub build_flair_regexes ($self, $opts=undef) {
-    my @re  = $self->load_core_re();
-    push @re, $self->load_user_def_re($opts);
-    return wantarray ? @re : \@re;
+    my @re  = $self->load_user_def_re($opts);
+    return wantarray ? @re : \@re ;
 }
 
 sub create_re ($self, $href) {
     my $match = $href->{match};
     if ($match =~ / / and ! $href->{multiword}) {
-        $self->log->warn("Regular Expression $href->{name} contains spaces but was not marked multiword.  Overriding multiword to true.");
+        $self->log->trace("Regular Expression $href->{name} contains spaces but was not marked multiword.  Overriding multiword to true.");
         $href->{multiword} = 1;
     }
     die "Must provide match value in RE record." unless defined $match;
-    $href->{regex} = ($href->{multiword}) ? qr/($match)/ims 
-                                          : qr/\b($match)\b/xims;
+    # strip out \b as a test
+    $match =~ s/\\b//g;
+    my $newre = try {
+        ($href->{multiword}) ? qr{(\Q$match\E)}xims : qr{\b(\Q$match\E)\b}xims;
+    }
+    catch {
+        $self->log->error("Error parsing RE: ",{filter =>\&Dumper, value => $href});
+        $self->log->error("Error was: $_");
+        return undef;
+    };
+    if (defined $newre) {
+        $href->{regex} = $newre;
+    }
 }
 
 sub upsert_re ($self, $href) {
     my $results = $self->list({
         fields  => [ 'regex_id' ],
         where   => { 
-            name  => $href->{name},
+            # name  => $href->{name},
             match => $href->{match},
         },
     });
-    $self->log->debug("list result = ",{filter=>\&Dumper, value => $results});
 
     if (defined $results and scalar @$results > 0) {
         return $self->update($results->[0]->{regex_id}, $href);
@@ -326,6 +324,20 @@ sub regex_exists ($self, $regex) {
     }
     $self->log->debug("no matching regex");
     return undef;
+}
+
+sub populate_regex_table ($self, $udef_file) {
+    my @udef    = $self->load_udef_re($udef_file);
+    
+    foreach my $re (@udef) {
+        my $href = $self->upsert_re($re);
+        $self->log->trace("loaded $re->{name}");
+    }
+}
+
+sub load_udef_re ($self, $udef_file) {
+    my $udefs = Flair::Util::LoadHashFile->new->get_hash($udef_file);
+    return @{$udefs->{regexes}};
 }
 
 1;

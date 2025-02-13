@@ -1,0 +1,15 @@
+{
+    text    => <<~'EOF',
+        The system is S1091234
+        EOF
+
+    expect  => <<~'EOF',
+        The system is <span class="entity snumber" data-entity-type="snumber" data-entity-value="s1091234">S1091234</span>
+        EOF
+
+    entities    => {
+        snumber    => {
+            "s1091234" => 1,
+        },
+    },
+}

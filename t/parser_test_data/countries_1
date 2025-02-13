@@ -1,0 +1,17 @@
+{
+    text    => <<~'EOF',
+        Countries visited: Germany, France, and Italy.
+        EOF
+
+    expect  => <<~'EOF',
+        Countries visited: <span class="entity country_name" data-entity-type="country_name" data-entity-value="germany">Germany</span>, <span class="entity country_name" data-entity-type="country_name" data-entity-value="france">France</span>, and <span class="entity country_name" data-entity-type="country_name" data-entity-value="italy">Italy</span>.
+        EOF
+
+    entities    => {
+        country_name    => {
+            "germany" => 1,
+            "italy" => 1,
+            "france" => 1,
+        },
+    },
+}

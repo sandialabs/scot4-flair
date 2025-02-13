@@ -1,6 +1,7 @@
 package Flair::Images;
 
 use Mojo::Base -base, -signatures;
+use Mojo::UserAgent;
 use Data::Dumper::Concise;
 use HTML::Element;
 use MIME::Base64;
@@ -93,16 +94,21 @@ sub download_image ($self, $image) {
     my $ua  = Mojo::UserAgent->new();
     $ua->proxy->detect;
     my $insec   = $self->insec;
-    my $asset   = $ua->insecure($insec)->max_redirects(5)->get($link)->result->content->asset;
-    my $md5     = md5_hex($asset->slurp);
-    my $ext     = $self->get_extension($link);
-    my $newfile = $self->download_dir . "/$md5.$ext";
-    if ( $self->file_exists($newfile) ) {
+    my $result  = $ua->insecure($insec)->max_redirects(5)->get($link)->result;
+
+    if ($result->is_success) {
+        my $asset   = $result->content->asset;
+        my $md5     = md5_hex($asset->slurp);
+        my $ext     = $self->get_extension($link);
+        my $newfile = $self->download_dir . "/$md5.$ext";
+        if ( $self->file_exists($newfile) ) {
+            return $newfile;
+        }
+        $asset->move_to($newfile);
+        $self->log->debug("Downloaded $link to file $newfile");
         return $newfile;
     }
-    $asset->move_to($newfile);
-    $self->log->debug("Downloaded $link to file $newfile");
-    return $newfile;
+    return undef;
 }
 
 sub get_extension ($self, $link) {
@@ -140,7 +146,7 @@ sub rewrite_img_element($self, $image, $new_uri) {
 }
 
 sub get_alt ($self, $link, $element) {
-    my $orig    = $element->attr('alt');
+    my $orig    = $element->attr('alt') // '';
     my $new = ( $link =~ /^data:/ ) ? 'Cached copy of embedded data uri' 
                                     : "Locally cached copy of $link";
     # $new .= "-$orig-" if defined $orig;

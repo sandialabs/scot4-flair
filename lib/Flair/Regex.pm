@@ -3,6 +3,9 @@ package Flair::Regex;
 # core regular exporessions
 
 use Mojo::Base -base, -strict, -signatures;
+# use Regexp::Common qw(URI);
+
+has 'scot_external_hostname';
 
 sub core_regex_names ($self) {
     my @list    = (qw(
@@ -28,9 +31,25 @@ sub core_regex_names ($self) {
         appkey 
         angle_bracket_msgid 
         jarm_hash 
+        scot_uri
+        internal_link
+        countries
+        sid
+        useragent
+        snumber
     ));
+    # omitted uri on purpose, not ready for prime time
     return wantarray ? @list : \@list;
 };
+
+sub get_core_regex_array ($self) {
+    my @regexes = ();
+    foreach my $name ($self->core_regex_names) {
+        push @regexes, $self->$name;
+    }
+    my @sorted = sort { $a->{re_order} <=> $b->{re_order} } @regexes;
+    return wantarray ? @sorted : \@sorted;
+}
 
 sub cve ($self ) {
     return {
@@ -47,6 +66,24 @@ sub cve ($self ) {
         multiword   => 0,
     };
 }
+
+sub useragent ($self) {
+    return {
+        name        => 'useragent',
+        description => 'Browser Useragent String',
+        regex       => qr{
+            \b
+            \((?<info>.*?)\)(\s|$)|(?<name>.*?)\/(?<version>.*?)(\s|$)/gm
+            \b
+        }xims,
+        entiry_type => 'user_agent',
+        regex_type  => 'core',
+        re_order    => 500,
+        multiword   => 1,
+    };
+}
+
+
 
 sub cidr ($self) {
     return {
@@ -454,12 +491,12 @@ sub domain_name ($self) {
                     \.
                     [\]\}\)]*
                 )+
-            (
-                [a-z0-9-]{2,63}
+                (
+                    [a-z0-9-]{2,63}
+                )
+                (?<=[a-z])  # prevent foo.12 from being a match
             )
-            (?<=[a-z])  # prevent foo.12 from being a match
-        )
-        \b
+            \b
         }xims,
         entity_type => 'domain',
         regex_type  => 'core',
@@ -523,6 +560,305 @@ sub jarm_hash ($self) {
         multiword   => 0,
     };
 }
+
+sub sid ($self) {
+    return {
+        name        => 'sid',
+        description => 'SID',
+        regex       => qr{
+            \b
+            S-\d{1}-\d{1}-\d{2}-\d{10}-\d{10}-\d{10}-\d{3}
+            \b
+        }xims,
+        entity_type => 'jarm_hash',
+        regex_type  => 'core',
+        re_order    => 190,
+        multiword   => 0,
+    };
+}
+
+sub snumber ($self) {
+    return {
+        name    => 'snumber',
+        description  => 'Sandia Property Number',
+        regex        => qr{
+            \b
+            s\d{6}\d?
+            \b
+        }xims,
+        entity_type => 'snumber',
+        regex_type  => 'core',
+        re_order    => 200,
+        multiword   => 0,
+    };
+}
+
+# RE{URI} from REGEX::COMMON can not handle URI's with # in them
+# which renders it kind of useless.
+#sub uri ($self) {
+#    return {
+#        name        => 'uri',
+#        description => 'Find URIs',
+#        regex       => qr!($RE{URI})!,
+#        entity_type => 'uri',
+#        regex_type  => 'core',
+#        re_order    => 156,
+#        multiword   => 1,
+#    };
+#}
+
+sub scot_uri ($self) {
+    my $hostname    = $self->scot_external_hostname;
+    return {
+        name        => 'scot_uri',
+        description => 'Find URIs to this SCOT instance and convert them to internal links',
+        regex       => qr((http[s]://$hostname\/([#a-z0-9\/]*)\b))xims,
+        entity_type => 'scot_uri',
+        regex_type  => 'core',
+        re_order    => 133,
+        multiword   => 1,
+    };
+}
+
+sub internal_link ($self) {
+    return {
+        name        => 'internal_link',
+        description => 'Find internal References',
+        regex       => qr{
+            \b
+            SCOT-
+            (Alert|Alertgroup|Event|Incident|Dispatch|Intel|
+             Product|VulnFeed|VulnTrack|Guid|Signature)
+            -[0-9]+
+            \b
+        }xims,
+        entity_type => 'internal_link',
+        regex_type  => 'core',
+        re_order    => 155,
+        multiword   => 0,
+    };
+}
+
+sub countries ($self) {
+    my @countries = (
+        'Afghanistan',
+        'Albania',
+        'Algeria',
+        'Andorra',
+        'Angola',
+        'Antigua & Deps',
+        'Antigua and Deps',
+        'Argentina',
+        'Armenia',
+        'Australia',
+        'Austria',
+        'Azerbaijan',
+        'Bahamas',
+        'Bahrain',
+        'Bangladesh',
+        'Barbados',
+        'Belarus',
+        'Belgium',
+        'Belize',
+        'Benin',
+        'Bermuda',
+        'Bhutan',
+        'Bolivia',
+        'Bosnia Herzegovina',
+        'Botswana',
+        'Brazil',
+        'Brunei',
+        'Bulgaria',
+        'Burkina',
+        'Burundi',
+        'Cambodia',
+        'Cameroon',
+        'Canada',
+        'Cape Verde',
+        'Central African Rep',
+        'Chad',
+        'Chile',
+        'China',
+        'Colombia',
+        'Comoros',
+        'Congo',
+        'Democratic Republic of Congo',
+        'Congo',
+        'Costa Rica',
+        'Croatia',
+        'Cuba',
+        'Cyprus',
+        'Czech Republic',
+        'Denmark',
+        'Djibouti',
+        'Dominica',
+        'Dominican Republic',
+        'East Timor',
+        'Ecuador',
+        'Egypt',
+        'El Salvador',
+        'Equatorial Guinea',
+        'Eritrea',
+        'Estonia',
+        'Eswatini',
+        'Ethiopia',
+        'Fiji',
+        'Finland',
+        'France',
+        'Gabon',
+        'Gambia',
+        'Georgia',
+        'Germany',
+        'Ghana',
+        'Greece',
+        'Grenada',
+        'Guatemala',
+        'Guinea',
+        'Guinea-Bissau',
+        'Guyana',
+        'Haiti',
+        'Honduras',
+        'Hungary',
+        'Iceland',
+        'India',
+        'Indonesia',
+        'Iran',
+        'Iraq',
+        'Republic of Ireland',
+        'Ireland',
+        'Israel',
+        'Italy',
+        'Ivory Coast',
+        'Jamaica',
+        'Japan',
+        'Jordan',
+        'Kazakhstan',
+        'Kenya',
+        'Kiribati',
+        'Korea North',
+        'Korea South',
+        'Kosovo',
+        'Kuwait',
+        'Kyrgyzstan',
+        'Laos',
+        'Latvia',
+        'Lebanon',
+        'Lesotho',
+        'Liberia',
+        'Libya',
+        'Liechtenstein',
+        'Lithuania',
+        'Luxembourg',
+        'Macedonia',
+        'Madagascar',
+        'Malawi',
+        'Malaysia',
+        'Maldives',
+        'Mali',
+        'Malta',
+        'Marshall Islands',
+        'Mauritania',
+        'Mauritius',
+        'Mexico',
+        'Micronesia',
+        'Moldova',
+        'Monaco',
+        'Mongolia',
+        'Montenegro',
+        'Morocco',
+        'Mozambique',
+        'Myanmar',
+        'Namibia',
+        'Nauru',
+        'Nepal',
+        'Netherlands',
+        'New Zealand',
+        'Nicaragua',
+        'Niger',
+        'Nigeria',
+        'Norway',
+        'Oman',
+        'Pakistan',
+        'Palau',
+        'Palestine',
+        'Panama',
+        'Papua New Guinea',
+        'Paraguay',
+        'Peru',
+        'Philippines',
+        'Poland',
+        'Portugal',
+        'Qatar',
+        'Romania',
+        'Russian Federation',
+        'Rwanda',
+        'St Kitts & Nevis',
+        'St Kitts and Nevis',
+        'St Lucia',
+        'Saint Vincent & the Grenadines',
+        'Saint Vincent and the Grenadines',
+        'Samoa',
+        'San Marino',
+        'Sao Tome & Principe',
+        'Sao Tome and Principe',
+        'Saudi Arabia',
+        'Senegal',
+        'Serbia',
+        'Seychelles',
+        'Sierra Leone',
+        'Singapore',
+        'Slovakia',
+        'Slovenia',
+        'Solomon Islands',
+        'Somalia',
+        'South Africa',
+        'South Sudan',
+        'Spain',
+        'Sri Lanka',
+        'Sudan',
+        'Suriname',
+        'Sweden',
+        'Switzerland',
+        'Syria',
+        'Taiwan',
+        'Tajikistan',
+        'Tanzania',
+        'Thailand',
+        'Togo',
+        'Tonga',
+        'Trinidad & Tobago',
+        'Trinidad and Tobago',
+        'Tunisia',
+        'Turkey',
+        'Turkmenistan',
+        'Tuvalu',
+        'Uganda',
+        'Ukraine',
+        'United Arab Emirates',
+        'United Kingdom',
+        'United States',
+        'Uruguay',
+        'Uzbekistan',
+        'Vanuatu',
+        'Vatican City',
+        'Venezuela',
+        'Vietnam',
+        'Yemen',
+        'Zambia',
+        'Zimbabwe',
+    );
+    my $rematchstr = '('.join('|', @countries).')';
+    return {
+        name        => 'country_name',
+        description => 'Flair Country Names',
+        regex       => qr{\b$rematchstr\b}ms,
+        entity_type => 'country_name',
+        regex_type  => 'core',
+        re_order    => 500,
+        multiword   => 1,
+    };
+}
+
 
 1;
 

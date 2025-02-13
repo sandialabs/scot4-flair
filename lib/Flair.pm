@@ -73,6 +73,15 @@ sub startup ($self) {
         );
         $processor->do_flairing($job, @args);
     });
+
+    $self->minion->add_task('flair_bulk' => sub ($job, @args) {
+        $self->log->debug("Inside flair_bulk");
+        my $processor = Flair::Processor->new(
+            log => $self->log, db => $db, scotapi => $scotapi, 
+            config => $self->config, minion => $self->minion,
+        );
+        $processor->do_bulk($job, @args);
+    });
     
     # this is most likely behind a reverse proxy especiallly in a kubernetes/docker env
     # so set the env var MOJO_REVERSE_PROXY to the path prefeix (likely /scot-flair)
@@ -173,7 +182,7 @@ sub log_server_startup ($self) {
         "| MOJO  : ".$Mojolicious::VERSION,
         "| Mode  : ".$self->mode,
         "| DB    : ".$self->config->{database}->{uri},
-        "| INC   : ".$inc,
+        # "| INC   : ".$inc,
         # "| MOJO_REVERSE_PROXY : ".$ENV{MOJO_REVERSE_PROXY},
         "| CONFIG: ", $cfg,
         "==========================================================",
@@ -187,10 +196,21 @@ sub catch_error_setup ($self) {
             # in eval, don't log, catch later
             return;
         }
-        $Log::Log4perl::caller_depth++;
+        local $Log::Log4perl::caller_depth = $Log::Log4perl::caller_depth+1;
         $self->log->error(longmess());
         $self->log->fatal(@_);
         die @_;
     };
+    #$SIG{'__WARN__'} = sub {
+    #    if ( $^S ){
+    #        # in eval, don't log, catch later
+    #        return;
+    #    }
+    #    my $depth = $Log::Log4perl::caller_depth;
+    #    $Log::Log4perl::caller_depth++;
+    #    $self->log->warn(longmess());
+    #    $self->log->warn(@_);
+    #    $Log::Log4perl::caller_depth = $depth;
+    #};
 }
 1;
