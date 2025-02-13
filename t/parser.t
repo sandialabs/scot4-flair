@@ -34,8 +34,11 @@ my $config = {
             jobs    => {},
         },
         migration   => '../etc/test.sqlite.sql',
+        udef_file   => '../etc/udef_regexes.pl',
     },
 };
+
+system("rm -f /var/flair/test.db");
 
 my $lhf = Flair::Util::LoadHashFile->new();
 
@@ -45,7 +48,11 @@ is (ref($db), "Flair::Db", "Got DB connection") or die "unable to connect to db"
 ok ($db->dbh->migrations->from_file($migfile)->migrate(0)->migrate, 
     "Migrated database") or die "Unable to intialize database";
 
-my $parser  = Flair::Parser->new(log => $log, db => $db);
+# need to populate flair table
+# only if we want to test user defined flair
+# $db->regex->populate_regex_table($config->{database}->{udef_file});
+
+my $parser  = Flair::Parser->new(log => $log, db => $db, scot_external_hostname => 'scot.watermelon.com');
 ok(defined $parser, "Parser instantiated") or die "Failed to instantiate parser";
 
 my $test_data_dir   = "./parser_test_data";

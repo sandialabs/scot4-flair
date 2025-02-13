@@ -14,6 +14,8 @@ no warnings qw(experimental::signatures);
 use Log::Log4perl;
 use Data::Dumper;
 
+Log::Log4perl->wrapper_register(__PACKAGE__);
+
 sub get_logger ($logger="Flair") {
         die "Logger not configured" unless Log::Log4perl->initialized();
         say "Returning Logger $logger";
@@ -70,6 +72,7 @@ sub find_config ($filename) {
 
     my @paths   = (qw(
         .
+        ~/dev/flair/etc
         ~/flair/etc
         ~/Flair/etc
         /opt/flair/etc

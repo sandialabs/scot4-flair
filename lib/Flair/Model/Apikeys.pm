@@ -71,7 +71,7 @@ sub update_sqlite ($self, $id, $update_href) {
     my $sql           = $self->getSAL;
     my $where         = { apikey_id => $id };
     my $href          = dclone($update_href);
-    $href->{'`key`'}  = delete $href->{key};
+    $href->{'`apikey`'}  = delete $href->{apikey};
     my ($stmt, @bind) = $sql->update($self->tablename, $href, $where);
     $self->log_sql(__PACKAGE__, $stmt, @bind);
 
@@ -87,7 +87,7 @@ sub patch_sqlite ($self, $id, $update_href) {
     my $sql           = $self->getSAL;
     my $where         = { apikey_id => $id };
     my $href          = dclone($update_href);
-    $href->{'`key`'}  = delete $href->{key};
+    $href->{'`apikey`'}  = delete $href->{apikey};
     my ($stmt, @bind) = $sql->update($self->tablename,
                                      $href,
                                      $where);

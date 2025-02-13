@@ -61,12 +61,14 @@ sub build_config () {
     set_default('S4FLAIR_SCOT_API_KEY',     'xxxxxx');
     # uri base 
     set_default('S4FLAIR_SCOT_API_URI_ROOT', 'https://scot4/api/v1');
+    set_default('S4FLAIR_SCOT_EXTERNAL_HOSTNAME', 'scot4');
     
     my $logfile = join('/', $ENV{S4FLAIR_LOG_DIR}, $ENV{S4FLAIR_LOG_FILE});
 
     my $config  = {
         version     => $ENV{S4FLAIR_VERSION},
         mode        => $ENV{S4FLAIR_MODE},
+        scot_external_hostname => $ENV{S4FLAIR_SCOT_EXTERNAL_HOSTNAME},
         install     => {
             dbfile      => $ENV{S4FLAIR_DB_FILE},
             admin_user  => $ENV{S4FLAIR_ADMIN_USER},
@@ -87,7 +89,7 @@ log4perl.appender.FlairLog = Log::Log4perl::Appender::File
 log4perl.appender.FlairLog.mode = append 
 log4perl.appender.FlairLog.filename = $logfile
 log4perl.appender.FlairLog.layout = Log::Log4perl::Layout::PatternLayout
-log4perl.appender.FlairLog.layout.ConversionPattern = %d %7p [%P] %15F{1}: %4L %m%n
+log4perl.appender.FlairLog.layout.ConversionPattern = %d %5p [%12F:%4L] %m%n
             },
         },
         hypnotoad   => {
@@ -130,6 +132,7 @@ log4perl.appender.FlairLog.layout.ConversionPattern = %d %7p [%P] %15F{1}: %4L %
             api_key  => $ENV{S4FLAIR_SCOT_API_KEY}, 
             uri_root => $ENV{S4FLAIR_SCOT_API_URI_ROOT},
         },
+        flair_job_test => $ENV{S4FLAIR_JOB_TEST} // undef,
     };
     return $config;
 }

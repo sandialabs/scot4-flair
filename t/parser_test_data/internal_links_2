@@ -1,0 +1,12 @@
+{
+    text    => <<~'EOF',
+        The file is attached to SCOT-Event-123, grab it there.
+        EOF
+
+    expect  => <<~'EOF',
+        The file is attached to <span class="ilink"><a href="/#/event/123">SCOT-Event-123</a></span>, grab it there.
+        EOF
+
+    entities    => {
+    },
+}

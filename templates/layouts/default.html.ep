@@ -85,7 +85,7 @@
                  height="80px">
 
             <input type="button" class="navButton" value="Regex"        
-             onclick="window.location.href=&quot;<%= $prefix %>/flair/dt/regex&quot;">
+                onclick="window.location.href=&quot;<%= $prefix %>/flair/dt/regex&quot;">
             <input type="button" class="navButton" value="ApiKeys"      
                 onclick="window.location.href=&quot;<%= $prefix %>/flair/dt/apikeys&quot;">
             <input type="button" class="navButton" value="Admins"       

@@ -1,0 +1,15 @@
+{
+    text    => <<~'EOF',
+        The visit to Egypt was not Malicious
+        EOF
+
+    expect  => <<~'EOF',
+        The visit to <span class="entity country_name" data-entity-type="country_name" data-entity-value="egypt">Egypt</span> was not Malicious
+        EOF
+
+    entities    => {
+        country_name    => {
+            "egypt" => 1,
+        },
+    },
+}
