@@ -1,0 +1,15 @@
+{
+    text    => <<~'EOF',
+        Text before ::ffff:10.253.8.72 and after
+        EOF
+
+    expect  => <<~'EOF',
+        Text before <span class="entity ipv6" data-entity-type="ipv6" data-entity-value="0:0:0:0:0:ffff:10.253.8.72">0:0:0:0:0:ffff:10.253.8.72</span> and after
+        EOF
+
+    entities    => {
+        ipv6    => {
+            "0:0:0:0:0:ffff:10.253.8.72" => 1,
+        },
+    },
+}

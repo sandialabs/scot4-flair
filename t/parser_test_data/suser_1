@@ -1,0 +1,15 @@
+{
+    text    => <<~'EOF',
+        The user is SANDIA\tfoo
+        EOF
+
+    expect  => <<~'EOF',
+        The user is <span class="entity suser" data-entity-type="suser" data-entity-value="sandia\tfoo">SANDIA\tfoo</span>
+        EOF
+
+    entities    => {
+        suser    => {
+            'sandia\tfoo' => 1,
+        },
+    },
+}

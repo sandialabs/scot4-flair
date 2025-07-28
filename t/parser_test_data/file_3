@@ -4,12 +4,15 @@
         EOF
 
     expect  => <<~'EOF',
-        Sep 10, 2018 07:33:38 AM Error [ajp-nio-8016-exec-6] - Error Executing Database Query.[Macromedia][SQLServer JDBC Driver][SQLServer]Incorrect syntax near '='. The specific sequence of files included or processed is: /mnt/gfs/cfdocs/eCATT/templates/<span class="entity file" data-entity-type="file" data-entity-value="pgas_rslts.cfm">pgas_rslts.cfm</span>, line: 235
+        Sep 10, 2018 07:33:38 AM Error [ajp-nio-8016-exec-6] - Error Executing Database Query.[Macromedia][SQLServer JDBC Driver][SQLServer]Incorrect syntax near '='. The specific sequence of files included or processed is: /mnt/gfs<span class="entity cf_site" data-entity-type="cf_site" data-entity-value="/cfdocs/ecatt/">/cfdocs/eCATT/</span>templates/<span class="entity file" data-entity-type="file" data-entity-value="pgas_rslts.cfm">pgas_rslts.cfm</span>, line: 235
         EOF
 
     entities    => {
         file    => {
             'pgas_rslts.cfm' => 1,
+        },
+        cf_site => {
+            '/cfdocs/ecatt/' => 1,
         },
     },
 }

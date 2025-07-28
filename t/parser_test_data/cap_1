@@ -1,0 +1,15 @@
+{
+    text    => <<~'EOF',
+        This APT5 looks weird.
+        EOF
+
+    expect  => <<~'EOF',
+        This <span class="entity threat-actor" data-entity-type="threat-actor" data-entity-value="apt5">APT5</span> looks weird.
+        EOF
+
+    entities    => {
+        "threat-actor"    => {
+            "apt5" => 1,
+        },
+    },
+}

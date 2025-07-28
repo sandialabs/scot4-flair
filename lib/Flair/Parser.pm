@@ -167,6 +167,7 @@ sub post_match_actions ($self, $match, $et, $edb, $falsepos) {
     return $self->domain_action($match, $edb, $falsepos)    if $et eq "domain";
     return $self->ipaddr_action($match, $edb, $falsepos)    if $et eq "ipaddr";
     return $self->ipv6_action($match, $edb, $falsepos)      if $et eq "ipv6";
+    return $self->ipv6mixed_action($match, $edb, $falsepos) if $et eq "ipv6mixed";
     return $self->email_action($match, $edb, $falsepos)     if $et eq "email";
     return $self->cve_action($match, $edb, $falsepos)       if $et eq "cve";
     return $self->internal_link($match, $edb, $falsepos)    if $et eq "internal_link";
@@ -344,6 +345,30 @@ sub ipv6_action ($self, $match, $edb, $falsepos) {
     return $self->create_span($standardized, 'ipv6');
 }
 
+sub ipv6mixed_action ($self, $match, $edb, $falsepos) {
+    # see if Net::IPv6Addr things this is a valid ipv6 address
+    $self->log->debug("Checking $match for IPv6-ness");
+    my $ipobj   = try {
+        return Net::IPv6Addr->new($match);
+    }
+    catch {
+        $self->log->warn("invalid IPv6");
+        return undef;
+    };
+
+    if (not defined $ipobj or ref($ipobj) ne "Net::IPv6Addr") {
+        $self->log->warn("failed to validate potential ipv6: $match: $_");
+        return undef;
+    }
+
+    # it is!
+    my $standardized = $ipobj->to_string_ipv4();
+    $self->log->debug("Standardized as $standardized");
+    $self->add_entity($edb, $standardized, 'ipv6');
+    return $self->create_span($standardized, 'ipv6');
+
+}
+
 sub suricata_ipv6_action ($self, $match, $edb, $falsepos) {
     # suricata puts a :portnum on the end of the ipv6 addr
     my @parts   = split(/:/, $match);
@@ -437,13 +462,19 @@ sub message_id_action ($self, $match, $edb,$falsepos) {
 sub create_span ($self, $match, $et) {
     # wrap match string in a span
     $self->log->debug("creating entity span for $match type $et");
+    my $text = $match;
+    if ($et eq "message_id") {
+        # scot4/scot4 issue #602: <foo@bar.com> needs to be &lt;foo@bar.com%gt;
+        $text =~ s/</&lt;/;
+        $text =~ s/>/&gt;/;
+    }
     my $element = HTML::Element->new(
         'span',
         'class'             => "entity $et",
         'data-entity-type'  => $et,
         'data-entity-value' => lc($match),
     );
-    $element->push_content($match);
+    $element->push_content($text);
     return $element;
 }
 

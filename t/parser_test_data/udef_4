@@ -1,0 +1,15 @@
+{
+    text    => <<~'EOF',
+        The APT32 was active
+        EOF
+
+    expect  => <<~'EOF',
+        The <span class="entity threat-actor" data-entity-type="threat-actor" data-entity-value="apt32">APT32</span> was active
+        EOF
+
+    entities    => {
+        'threat-actor'    => {
+            "apt32" => 1,
+        },
+    },
+}
