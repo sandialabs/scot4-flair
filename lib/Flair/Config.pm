@@ -89,7 +89,7 @@ log4perl.appender.FlairLog = Log::Log4perl::Appender::File
 log4perl.appender.FlairLog.mode = append 
 log4perl.appender.FlairLog.filename = $logfile
 log4perl.appender.FlairLog.layout = Log::Log4perl::Layout::PatternLayout
-log4perl.appender.FlairLog.layout.ConversionPattern = %d %5p [%12F:%4L] %m%n
+log4perl.appender.FlairLog.layout.ConversionPattern = %d %5p %15F{1}:%4L %m%n
             },
         },
         hypnotoad   => {

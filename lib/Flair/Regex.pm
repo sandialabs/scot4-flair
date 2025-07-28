@@ -11,11 +11,11 @@ sub core_regex_names ($self) {
     my @list    = (qw(
         cve 
         cidr 
+        ipv6_mixed 
         ipv6_suricata 
         ipv6_standard 
         ipv6_compressed 
         ipv6_cmp8colons 
-        ipv6_mixed 
         ipv4 
         uuid1 
         clsid 
@@ -37,6 +37,9 @@ sub core_regex_names ($self) {
         sid
         useragent
         snumber
+        suser
+        snlserver1
+        snlserver2
     ));
     # omitted uri on purpose, not ready for prime time
     return wantarray ? @list : \@list;
@@ -151,7 +154,7 @@ sub ipv6_compressed ($self) {
         }xims,
         entity_type => 'ipv6',
         regex_type  => 'core',
-        re_order    => 33,
+        re_order    => 34,
         multiword   => 0,
     };
 }
@@ -165,7 +168,7 @@ sub ipv6_cmp8colons ($self ) {
         }xims,
         entity_type => 'ipv6',
         regex_type  => 'core',
-        re_order    => 33,
+        re_order    => 35,
         multiword   => 0,
     };
 }
@@ -193,7 +196,7 @@ sub ipv6_mixed ($self ) {
           # 255
           (?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])
         }xims,
-        entity_type => 'ipv6',
+        entity_type => 'ipv6mixed',
         regex_type  => 'core',
         re_order    => 33,
         multiword   => 0,
@@ -589,6 +592,54 @@ sub snumber ($self) {
         entity_type => 'snumber',
         regex_type  => 'core',
         re_order    => 200,
+        multiword   => 0,
+    };
+}
+
+sub suser ($self) {
+    return {
+        name    => 'suser',
+        description => 'Sandia Username',
+        regex       => qr{
+            \b
+            SANDIA\\\S+
+            \b
+        }xims,
+        entity_type => 'suser',
+        regex_type  => 'core',
+        re_order    => 210,
+        multiword   => 1,
+    };
+}
+
+sub snlserver1 ($self) {
+    return {
+        name    => 'snlserver1',
+        description => 'Sandia Server Name',
+        regex   => qr{
+            \b
+            as\d+snllx
+            \b
+        }xims,
+        entity_type => 'sandiaserver',
+        regex_type  => 'core',
+        re_order    => 300,
+        multiword   => 0,
+    };
+}
+
+sub snlserver2 ($self) {
+    return {
+        name    => 'snlserver2',
+        description => 'Sandia Server Name',
+        regex   => qr{
+            \b
+            as\d+mcslx
+            \b
+        }xims,
+        entity_type => 'sandiaserver',
+        regex_type  => 'core',
+        re_order    => 300,
         multiword   => 0,
     };
 }

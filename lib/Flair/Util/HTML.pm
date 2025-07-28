@@ -37,7 +37,21 @@ sub build_html_tree ($text) {
        $tree    ->ignore_unknown(0);     # allow stuff like <figure/>
        $tree    ->parse_content($text);
        $tree    ->elementify;
+    ##
+    ## when dumping the tree as plain text, any tables will have cells 
+    ## smashed together.  This function will add some spaces to tree 
+    ## and will fix this
+    insert_table_element_spaces($tree);
     return $tree;
+}
+
+sub insert_table_element_spaces ($tree) {
+    foreach my $td ($tree->look_down('_tag', 'td')) {
+        $td->preinsert(" ");
+    }
+    foreach my $th ($tree->look_down('_tag', 'th')) {
+        $th->preinsert(" ");
+    }
 }
 
 sub output_tree_html ($tree) {

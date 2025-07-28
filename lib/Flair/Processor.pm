@@ -524,7 +524,7 @@ sub class_is ($self, $node, $match) {
 }
 
 sub is_flair_override_span ($self, $node) {
-    # ideas is to detect <span class="flairoverride" data-entity-type="type">sting</span>
+    # ideas is to detect <span class="flairoverride" data-entity-type="type">string</span>
     # and create an entity of type "type" without actually doing the parsing
     if ($self->node_is_span($node)) {
         my $class   = $node->attr('class');
@@ -544,6 +544,7 @@ sub extract_flair_override($self, $node, $edb) {
     my $text    = pop @content;
     # get type
     my $type = $node->attr('data-entity-type');
+    $self->log->debug("Detected Flair Override for $type = $text");
     # add it to edb
     $edb->{$type}->{$text}++;
     # rewrite <span> to be a standard flair span

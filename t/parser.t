@@ -50,7 +50,7 @@ ok ($db->dbh->migrations->from_file($migfile)->migrate(0)->migrate,
 
 # need to populate flair table
 # only if we want to test user defined flair
-# $db->regex->populate_regex_table($config->{database}->{udef_file});
+$db->regex->populate_regex_table($config->{database}->{udef_file});
 
 my $parser  = Flair::Parser->new(log => $log, db => $db, scot_external_hostname => 'scot.watermelon.com');
 ok(defined $parser, "Parser instantiated") or die "Failed to instantiate parser";
@@ -83,7 +83,7 @@ foreach my $df (@data_files) {
     delete $edb->{cache};
 
     is ($result, $test->{expect}, "Flaired Text Correctly in $df")
-    or hdiff($result, $test->{expect});
+    or xdiff($result, $test->{expect});
 
     cmp_deeply($edb, $test->{entities}, "EDB Correct in $df")
     or die "EDB Differs: ".Dumper($edb, $test);
@@ -107,6 +107,28 @@ sub hdiff {
     }
     die "Produced HTML differs";
 }
+
+sub xdiff {
+    my $g   = shift;
+    my $e   = shift;
+
+    for (my $i = 0; $i < length($g); $i++) {
+        my $gchar = substr($g, $i, 1);
+        my $echar = substr($e, $i, 1);
+
+        if ($gchar eq $echar) {
+            print $gchar;
+            next;
+        }
+
+        print "\n at char $i, test output differs from expected output\n";
+        print "[test] = $gchar\n";
+        print "[exp ] = $echar\n";
+        last;
+    }
+    die "Produced HTML differs";
+}
+
 
     
 

@@ -59,8 +59,7 @@ my $proc = Flair::Processor->new(log => $log, db => $db, config => $config, mini
 is (ref($proc), "Flair::Processor", "instatiated processor") or die "Failed to instantiate Processor";
 
  bulk_tests();
- done_testing();
- exit 0;
+ node_flair_override_section();
 
  data_validation_tests();
  leaf_node_detection();
@@ -74,10 +73,12 @@ is (ref($proc), "Flair::Processor", "instatiated processor") or die "Failed to i
  xss_tests();
  node_is_span_detection(); 
  node_is_noflair_section();
- node_flair_override_section();
  sparkline_tests();
  multi_row_spark_alert();
  images_in_alerts();
+
+ done_testing();
+ exit 0;
 
 sub xss_tests {
     my $html    = q{<p>&lt;script&gt;alert(1);&lt;/script%gt;</p>};
