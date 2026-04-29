@@ -584,8 +584,13 @@ sub is_predefined_entity ($self, $node, $edb) {
     return undef if $tag ne "span";
 
     my $class = $node->attr('class');
-    # TODO: tighten this up see issue #578
-    return undef if $class !~ /entity /i;
+    # adding the .+ to ensure that there is at least another class
+    # see issue #578
+    $self->log->debug("Testing if singular entity class: $class");
+    if ($class !~ /entity .*/i) {
+        $self->log->warn("Span detected with singular entity class, expect entity plus entity_name");
+        return undef;
+    }
 
     my $type  = $node->attr('data-entity-type');
     return undef if not defined $type;
@@ -648,7 +653,8 @@ sub flair_alert ($self, $alert, $falsepos) {
         # skip over columns we do not want to process
         next COLUMN if $self->is_skippable_column($column);
 
-        # cell is an array ref of 1 or more text items
+        # cell could be an array ref
+        # or a string that may look like a json array
         my $cell = $data->{$column};
 
         # detect sparkline data and draw a sparkline svg if present
@@ -738,6 +744,7 @@ sub flair_cell ($self, $alert, $column, $cell, $falsepos) {
     # expect input in one of two ways:
     # SCOT3 => array ref
     # SCOT4 => string of format: '["item1",..."itemx"]'
+    # also some external api users can input alertgroup with arrays in the json
 
     # if we get a SCOT4 input, change into an array
     if ( ref($cell) ne "ARRAY" ) {
@@ -828,10 +835,20 @@ sub flair_normal_cell ($self, $input, $falsepos) {
         my $replace_count   = $imgmunger->process($tree);
         $input   = ($replace_count) ? $tree->as_HTML : $input;
     }
-    my $flair = $self->parser->parse_stringified($input, $edb, $falsepos);
+    # ok, until now we just assumed that the text in the alertgroup is text
+    # but now we are going to pass everythign through html tree 
+
+    my $tree = build_html_tree($input);
+
+    $self->walk_tree($tree, $edb, $falsepos);
+    
+    # write the modified tree to html
+    my ($flaired_data, $plain_data) = output_tree_html($tree);
+
+    # my $flair = $self->parser->parse_stringified($input, $edb, $falsepos);
     return {
-        flair   => $flair,
-        text    => $input,
+        flair   => $flaired_data,
+        text    => $plain_data,
         edb     => $edb,
     };
 }
@@ -949,11 +966,12 @@ sub merge_edb ($self, $existing, $new) {
 sub arrayify_string ($self, $string) {
     # SCOT provides stringified arrays for alert cells
     # of the format '["foo", "bar", "boom"]'
+    # or "['foo', 'bar', 'boom']"
     # this will turn that into an array with elements ("foo", "bar", "boom" )
 
-    my @a   = split(/",[ ]*"/, $string);   # ["foo , bar, boom"]
-    $a[0]   =~ s/^\[\"//g;                 # foo, bar, boom"]
-    $a[-1]  =~ s/\"\]$//g;                 # foo, bar, boom
+    my @a   = split(/["'],[ ]*["']/, $string);   # '["foo , bar, boom"]' or "['foo', 'bar', 'boom']"
+    $a[0]   =~ s/^\[["']//g;                 # foo, bar, boom"] or foo, bar, boom']
+    $a[-1]  =~ s/["']\]$//g;                 # foo, bar, boom 
     return wantarray ? @a : \@a;
 }
 

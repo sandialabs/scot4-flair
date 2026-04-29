@@ -41,8 +41,14 @@ sub startup ($self) {
     $self->plugin('RemoteAddr');
     $self->plugin('Flair::Util::CSRFProtection');
 
+    # look for newer mysql config which implies we have migrated to using that
+    my $dbconfig = $config_href->{database};
+    if (defined $config_href->{newdb}) {
+        $self->log->debug("using new mysql db config");
+        $dbconfig = $config_href->{newdb};
+    }
 
-    my $db  = Flair::Db->new(log => $self->log, config => $config_href->{database});
+    my $db  = Flair::Db->new(log => $self->log, config => $dbconfig);
     $self->helper('db'  => sub { $db } );
     $self->attr  ('db' => sub {$db} );
     #
@@ -53,6 +59,8 @@ sub startup ($self) {
     $self->plugin('Minion' => $mindb);
     $self->plugin('Minion::Admin' => {route => $minion_auth});
     $self->plugin('Mojolicious::Plugin::DataTables');
+
+    $self->minion->remove_after(60*60*24*4);
 
     my $cache = Mojo::Cache->new(max_keys => 100);
     $self->helper('cache' => sub { $cache });

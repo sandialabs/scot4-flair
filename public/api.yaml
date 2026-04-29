@@ -8,6 +8,7 @@ info:
     email: "tbruner@sandia.gov"
 servers:
   - url: http://localhost/api/v1
+  - url: http://localhost:3000/api/v1
 paths:
 
   # ###########################################
