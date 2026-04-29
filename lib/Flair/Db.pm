@@ -3,11 +3,13 @@ package Flair::Db;
 use lib '../../lib';
 use Flair::Model::Admins;
 use Flair::Model::Regex;
+use Flair::Model::RegexV1;
 use Flair::Model::Metrics;
 use Flair::Model::Files;
 use Flair::Model::Apikeys;
 use Flair::Model::Jobs;
 use Mojo::SQLite;
+use Mojo::mysql;
 use Mojo::Base -base, -signatures;
 use Module::Runtime qw(require_module);
 
@@ -18,20 +20,28 @@ has 'log';
 has 'config';
 
 has dbtype  => sub ($self) {
+    if (defined $self->config->{mysqluri}) {
+        return 'mysql';
+    }
     return 'sqlite';
 };
 
 has dbclass => sub ($self) {
     return "Mojo::SQLite"   if ($self->dbtype =~ /sqlite/i);
+    return "Mojo::mysql"    if ($self->dbtype =~ /mysql/i);
     die "Unsupported dbtype : ".$self->dbtype;
 };
 
 has minion_backend  => sub ($self) {
-    return { SQLite => $self->config->{backend} };
+    return {SQLite => $self->config->{backend}} if ($self->dbtype =~ /sqlite/i);
+    return {mysql => $self->config->{mysqluri}} if ($self->dbtype =~ /mysql/i);
 };
 
 has connstr => sub ($self) {
-    return $self->config->{uri};
+    if ($self->dbtype eq "sqlite") {
+        return $self->config->{uri};
+    }
+    return $self->config->{mysqluri};
 };
 
 has dbh  => sub ($self) {
@@ -41,6 +51,15 @@ has dbh  => sub ($self) {
 
 has regex => sub ($self) {
     return Flair::Model::Regex->new(
+        dbh     => $self->dbh, 
+        log     => $self->log, 
+        config  => $self->config->{model}->{regex},
+        dbtype  => $self->dbtype,
+    );
+};
+
+has regex_v1 => sub ($self) {
+    return Flair::Model::RegexV1->new(
         dbh     => $self->dbh, 
         log     => $self->log, 
         config  => $self->config->{model}->{regex},

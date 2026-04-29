@@ -22,12 +22,6 @@ use Flair::Util::Crypt qw(hash_pass);
 # use the same config as the app
 my $config  = build_config();   # create config and set defaults in ENV vars
 
-my $logdir  = $ENV{'S4FLAIR_LOG_DIR'} // '/opt/flair/var/log';
-if ( ! -d $logdir ) {
-    system("mkdir -p $logdir");
-    system("chmod 0750 $logdir");
-}
-
 # note: this is simplistic and should work 99% of the time
 # The other things that can go wrong that will not catch:
 #    disk full
@@ -37,8 +31,15 @@ if ( ! -d $logdir ) {
 
 my $vardir  = '/opt/flair/var';
 if (! -w $vardir) {
-    system("chown 7777:7777 $vardir");
+    system("chown -R 7777:7777 $vardir");
 }
+
+my $logdir  = $ENV{'S4FLAIR_LOG_DIR'} // "$vardir/log";
+if ( ! -d $logdir ) {
+    system("mkdir -p $logdir");
+    system("chmod 0770 $logdir");
+}
+
 
 
 # get these from helm environment or use defaults
@@ -93,21 +94,21 @@ die "Invalid Install Dir" if ($instdir eq '/' or $instdir eq ' ' or $instdir eq 
 
 # this should be handled in docker file
 # but in case leaving it here, not expecting much from it
-my $ugscript = << "EOF";
+#my $ugscript = << "EOF";
+#
+#if grep --quiet -c $flair_group: /etc/group; then
+#    echo "$flair_group exists, reusing..."
+#else    
+#    groupadd $flair_group
+#fi
+#
+#if grep --quiet -c $flair_user: /etc/passwd; then
+#    echo "$flair_user exists, reusing..."
+#else
+#    useradd -c "Flair User" -g $flair_group -d $instdir -M -s /bin/bash $flair_user
+#fi
 
-if grep --quiet -c $flair_group: /etc/group; then
-    echo "$flair_group exists, reusing..."
-else    
-    groupadd $flair_group
-fi
-
-if grep --quiet -c $flair_user: /etc/passwd; then
-    echo "$flair_user exists, reusing..."
-else
-    useradd -c "Flair User" -g $flair_group -d $instdir -M -s /bin/bash $flair_user
-fi
-
-EOF
+#EOF
 # system($ugscript);
 
 # handled in Dockerfile, I hope
@@ -122,22 +123,24 @@ EOF
 #}
 
 # more Dockerfile
-my $copyscript = << "EOF";
-    tar -exclude-vcs -cf - . | (cd $instdir; tar xvf -)
-EOF
-# system($copyscript);
+#my $copyscript = << "EOF";
+#    tar -exclude-vcs -cf - . | (cd $instdir; tar xvf -)
+#EOF
+## system($copyscript);
 
-if ( ! -e $dbfile ) {
-    system("touch $dbfile");
-}
+# now we are mysql don't do this
+#if ( ! -e $dbfile ) {
+#    system("touch $dbfile");
+#}
 
 my $db  = Flair::Db->new(
     log     => $log,
-    config  => {
-        uri         => 'file:'.$dbfile,
-        model       => {},
-        migration   => $db_migration,
-    }
+    config  => $config->{newdb},
+    #    config  => {
+    #    uri         => 'file:'.$dbfile,
+    #    model       => {},
+    #    migration   => $db_migration,
+    #}
 );
 die "Unable to connect to $dbfile" if (! defined $db);
 

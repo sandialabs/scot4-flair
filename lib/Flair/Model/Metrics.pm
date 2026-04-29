@@ -38,7 +38,29 @@ sub get_hourly_metrics ($self) {
         my $date_key = join('-', $row->{year}, $row->{month}, $row->{day})." ".$row->{hour};
         my $metric  = $row->{metric};
         push @{$stats{$metric}{label}}, $date_key;
-        push @{$stats{$metric}{label}}, $row->{value};
+        push @{$stats{$metric}{value}}, $row->{value};
+    }
+    return wantarray ? %stats : \%stats;
+}
+
+sub get_daily_totals ($self, $where) {
+    my %stats   = ();
+    my $results = $self->get_metric($where);
+    foreach my $row (@$results) {
+        my $dkey = join('-', $row->{year}, $row->{month}, $row->{day});
+        my $metric = $row->{metric};
+        $stats{$metric}{$dkey} += $row->{value};
+    }
+    return wantarray ? %stats : \%stats;
+}
+
+sub get_monthly_totals ($self, $where) {
+    my %stats   = ();
+    my $results = $self->get_metric($where);
+    foreach my $row (@$results) {
+        my $dkey = join('-', $row->{year}, $row->{month});
+        my $metric = $row->{metric};
+        $stats{$metric}{$dkey} += $row->{value};
     }
     return wantarray ? %stats : \%stats;
 }

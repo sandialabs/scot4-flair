@@ -1,0 +1,15 @@
+{
+    text    => <<~'EOF',
+        b&amp;h photo is fun
+        EOF
+
+    expect  => <<~'EOF',
+        <span class="entity supplier" data-entity-type="supplier" data-entity-value="b&amp;h photo">b&amp;h photo</span> is fun.
+        EOF
+
+    entities    => {
+        "supplier"    => {
+            "b&amp;h photo" => 1,
+        },
+    },
+}

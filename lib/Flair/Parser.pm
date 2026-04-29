@@ -24,6 +24,24 @@ has 'public_suffix' => sub {
     });
 };
 
+has 're_types'  => sub ($self) {
+    return [ 'core', 'local', 'udef' ];
+};
+
+has 're_groups' => sub ($self) {
+    return [ 'core', 'udef', 'sandia' ];
+};
+
+has 'regex_util'    => sub ($self) {
+    return Flair::Regex->new(
+        db          => $self->db,
+        log         => $self->log,
+        re_types    => $self->re_types,
+        re_groups   => $self->re_groups,
+        scot_external_hostname => $self->scot_external_hostname,
+    );
+};
+
 sub parse ($self, $input, $edb, $falsepos, $hint=undef) {
     my $clean   = $self->clean_input($input);
     $self->log->debug("PARSING $clean");
@@ -32,23 +50,21 @@ sub parse ($self, $input, $edb, $falsepos, $hint=undef) {
     # so we want to pay the price of database fetch to make sure we 
     # have any new flair regexes included
     #
-    my @regexes = $self->get_regex_set();
+    my @regexes = @{$self->regex_util->re_set};
 
     # begin the parsing of the text, which is a recursive process
     my @new     = $self->descend($edb, $input, $falsepos, \@regexes, $hint);
     return @new;
 }
 
-sub get_regex_set ($self) {
+
+sub get_regex_set ($self, $re_set) {
     my $remodule    = Flair::Regex->new(
+        db                     => $self->db,
+        log                    => $self->log,
         scot_external_hostname => $self->scot_external_hostname
     );
-    my @core    = $remodule->get_core_regex_array;
-    my @udef    = $self->db->regex->load_user_def_re();
-    my @sorted  = sort { $a->{re_order} <=> $b->{re_order} } @core, @udef;
-    $self->log->debug("Loaded ".scalar(@sorted)." regular expressions");
-    my $i = 1;
-    # $self->log->trace("Sorted Regex Set => ",{filter=>\&Dumper, value=>\@sorted});
+    my @sorted = $remodule->load_re($re_set);
     return wantarray ? @sorted : \@sorted;
 }
 
@@ -83,12 +99,20 @@ sub descend ($self, $edb, $input, $falsepos, $re_aref, $hint=undef) {
 
 
         my $re  = $re_href->{regex};
-        my $et  = $re_href->{entity_type};
+        my $et  = $re_href->{entity_type} // '';
 
         my $re_name = $re_href->{name};
         my $re_order= $re_href->{re_order};
 
-        $self->log->trace("RE record: ", {filter=>\&Dumper, value=> $re});
+        $self->log->debug("$re_name ($re_order) - $et => $re");
+
+        if (! defined $re) {
+            $self->log->error("REGEX does not have compiled regex attribute");
+            $self->log->error("    this will cause erroneous matches.");
+            $self->log->error("    investigate and fix!  Skipping this regex for now!");
+            next REGEX;
+        }
+
 
         # get text before, the flair, and text after match
         my ($pre, $flair, $post) = $self->find_flairable($input, 
@@ -169,6 +193,7 @@ sub post_match_actions ($self, $match, $et, $edb, $falsepos) {
     return $self->ipv6_action($match, $edb, $falsepos)      if $et eq "ipv6";
     return $self->ipv6mixed_action($match, $edb, $falsepos) if $et eq "ipv6mixed";
     return $self->email_action($match, $edb, $falsepos)     if $et eq "email";
+    return $self->emailobsfucated_action($match, $edb, $falsepos)     if $et eq "emailobsfucated";
     return $self->cve_action($match, $edb, $falsepos)       if $et eq "cve";
     return $self->internal_link($match, $edb, $falsepos)    if $et eq "internal_link";
     return $self->uri_action($match, $edb, $falsepos)       if $et eq "uri";
@@ -446,6 +471,11 @@ sub email_action ($self, $match, $edb,$falsepos) {
     $espan->push_content($user, '@', $dspan);
     $self->add_entity($edb, $email, 'email');
     return $espan;
+}
+
+sub emailobsfucated_action ($self, $match, $edb,$falsepos) {
+    $match =~ s/\[at\]/@/;
+    return $self->email_action($match, $edb, $falsepos);
 }
 
 sub message_id_action ($self, $match, $edb,$falsepos) {

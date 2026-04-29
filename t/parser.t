@@ -24,33 +24,31 @@ my $config = {
         uri_root    => '',
         insecure    => 1,
     },
-    database    => {
-        dbtype  => 'sqlite',
-        uri     => 'file:/var/flair/test.db',
+    newdb    => {
+        dbtype  => 'mysql',
+        mysqluri => 'mysql://flair:flairrox!123@localhost/flairtest',
         model   => {
             regex   => {},
             metrics => {},
             admins  => {},
             jobs    => {},
         },
-        migration   => '../etc/test.sqlite.sql',
-        udef_file   => '../etc/udef_regexes.pl',
+        migration   => '../etc/flair.mysql.sql',
     },
 };
 
 system("rm -f /var/flair/test.db");
 
 my $lhf = Flair::Util::LoadHashFile->new();
-
-my $migfile = $config->{database}->{migration};
-my $db  = Flair::Db->new(log => $log, config  => $config->{database});
+my $migfile = $config->{newdb}->{migration};
+my $db  = Flair::Db->new(log => $log, config  => $config->{newdb});
 is (ref($db), "Flair::Db", "Got DB connection") or die "unable to connect to db";
+
 ok ($db->dbh->migrations->from_file($migfile)->migrate(0)->migrate, 
     "Migrated database") or die "Unable to intialize database";
 
-# need to populate flair table
-# only if we want to test user defined flair
-$db->regex->populate_regex_table($config->{database}->{udef_file});
+# need to populate regex table
+populate_regex_table();
 
 my $parser  = Flair::Parser->new(log => $log, db => $db, scot_external_hostname => 'scot.watermelon.com');
 ok(defined $parser, "Parser instantiated") or die "Failed to instantiate parser";
@@ -66,9 +64,9 @@ if ($ARGV[0]) {
 }
 
 foreach my $df (@data_files) {
-
     next if $df =~ /\.{1,2}/;   # skipp . and ..
     my $fqn = join('/',$test_data_dir, $df);
+    next if -d $fqn;
 
     $log->debug("== ==");
     $log->debug("== Testing $fqn ==");
@@ -129,7 +127,129 @@ sub xdiff {
     die "Produced HTML differs";
 }
 
+sub populate_regex_table {
+    my @ul_res  = (
+            {
+                name        => 'snumber',
+                description => 'Find Sandia SNumbers',
+                match       => q{
+                    \b
+                    ([sS][0-9]{6,7})
+                    \b
+                },
+                entity_type => 'snumber',
+                re_type     => 'local',
+                re_group    => 'sandia',
+                re_order    => 1001,
+                multiword   => 0,
+                active      => 1,
+            },
+            {
+                name        => 'suser',
+                description => 'Find Sandia Usernames',
+                match       => q{
+                    \b
+                    SANDIA\\\[a-z0-9]+
+                    \b
+                },
+                entity_type => 'suser',
+                re_type     => 'local',
+                re_group    => 'sandia',
+                re_order    => 1002,
+                multiword   => 1,
+                active      => 1,
+            },
+            {
+                name        => 'snlserver1',
+                description => 'Find Sandia Server names',
+                match       => q{
+                    \b
+                    as\d+snl(lx|tz|tc|tp|nt)
+                    \b
+                },
+                entity_type => 'sandiaserver',
+                re_type     => 'local',
+                re_group    => 'sandia',
+                re_order    => 1003,
+                multiword   => 0,
+                active      => 1,
+            },
+            {
+                name        => 'snlserver2',
+                description => 'Find Sandia Server names',
+                match       => q{
+                    \b
+                    as\d+mcs(lx|tz|tc|tp|nt)
+                    \b
+                },
+                entity_type => 'sandiaserver',
+                re_type     => 'local',
+                re_group    => 'sandia',
+                re_order    => 1004,
+                multiword   => 0,
+                active      => 1,
+            },
+            {
+                name        => 'fufoo',
+                description => 'Find fufoo in text',
+                match       => q{fufoo},
+                entity_type => 'test_entity',
+                re_type     => 'udef',
+                re_group    => 'udef',
+                re_order    => 1005,
+                multiword   => 0,
+                active      => 1,
+            },
+            {
+                name        => 'closing dispo',
+                description => 'Find closing dispo in text',
+                match       => q{new closing dispo},
+                entity_type => 'test_entity',
+                re_type     => 'udef',
+                re_group    => 'udef',
+                re_order    => 1006,
+                multiword   => 0,
+                active      => 1,
+            },
+            {
+                name        => 'sydney rox',
+                description => 'Find sydney rox in text',
+                match       => q{sydney rox},
+                entity_type => 'test_entity',
+                re_type     => 'udef',
+                re_group    => 'udef',
+                re_order    => 1007,
+                multiword   => 0,
+                active      => 1,
+            },
+            {
+                name        => 'Apt32',
+                description => 'Find Apt32 in text',
+                match       => q{apt32},
+                entity_type => 'threat-actor',
+                re_type     => 'udef',
+                re_group    => 'udef',
+                re_order    => 1008,
+                multiword   => 0,
+                active      => 1,
+            },
+            {
+                name        => 'cf_site',
+                description => 'User defined entity regex',
+                match       => q{/cfdocs/eCATT/},
+                entity_type => 'cf_site',
+                re_type     => 'udef',
+                re_group    => 'udef',
+                re_order    => 1009,
+                multiword   => 0,
+                active      => 1,
+            },
+    );
 
+    foreach my $href (@ul_res) {
+        $db->regex->create($href);
+    }
+}
     
 
     

@@ -1,11 +1,156 @@
-package Flair::Regex;
+package Flair::Regex;  
 
-# core regular exporessions
-
+use lib '../../lib';
 use Mojo::Base -base, -strict, -signatures;
-# use Regexp::Common qw(URI);
+use Data::Dumper::Concise;
+use Try::Tiny;
 
-has 'scot_external_hostname';
+has 'db';                       # must provide the Db.pm object to talk to the db
+has 'log';                      # must provide the logger
+has 'scot_external_hostname';   # must provide the hostname of the local scot instance
+has 're_types'  => sub {       # optionally provide array ref of re_types to load
+    return [ 'core', 'udef', 'local' ];
+};
+has 're_groups' => sub {        # optionally provide array ref of re_groups to load
+    return [ 'core' ];
+};
+
+sub add_type ($self, $type) {
+    push @{$self->re_types}, $type;
+}
+
+sub add_group ($self, $group) {
+    push @{$self->re_groups}, $group;
+}
+
+has 'name_index';     # hash of re names to re_set index
+has 'group_index';    # hash of re_groups to re_set index
+
+has 're_set'    => sub ($self) {        # builds the set of re's to search over
+    return $self->get_re_set;
+};
+
+sub get_re_set ($self) {
+    my @re_set  = ();
+    my %nindex  = ();
+    my %gindex  = ();
+    my $i       = 0;
+
+    if ( $self->should_include_core ) {
+        push @re_set, $self->get_core_regex_array();
+        foreach (@re_set) {
+            push @{$nindex{$_->{name}}}, $i;
+            push @{$gindex{$_->{re_group}}}, $i;
+            $i++;
+        }
+
+    }
+    my $opts    = {
+        order   => { 
+            '-asc'      => 're_order',
+        },
+    };
+
+    if (defined $self->re_types and scalar(@{$self->re_types})) {
+        $opts->{where}->{re_type} = $self->re_types;
+    }
+    if (defined $self->re_groups and scalar(@{$self->re_groups})) {
+        $opts->{where}->{re_group} = $self->re_groups;
+    }
+
+    my $list    = $self->db->regex->list($opts);
+    foreach my $re_rec (@$list) {
+        my $re  = $self->cook_match($re_rec);
+        $re_rec->{regex} = $re;
+        push @{$nindex{$re_rec->{name}}}, $i;
+        push @{$gindex{$re_rec->{re_group}}}, $i;
+        $i++;
+        push @re_set, $re_rec;
+    }
+
+    # the grep below will remove any re_order items 
+    # that are Not A Number (NaN) and prevent sort from blowing up
+    my @sorted_re_set = sort { $a->{re_order} <=> $b->{re_order} }
+                        grep { $_->{re_order} == $_->{re_order}  } @re_set;
+
+    $self->name_index(\%nindex);
+    $self->group_index(\%gindex);
+    # return wantarray ? @sorted_re_set : \@sorted_re_set;
+    return \@sorted_re_set;
+}
+
+
+sub should_include_core ($self) {
+    my @set = ();
+    push @set, @{$self->re_types} if defined $self->re_types;
+    push @set, @{$self->re_groups} if defined $self->re_groups;
+    return (grep { /core/i } @set);
+}
+
+sub cook_match ($self, $rehref) {
+    if ( $rehref->{re_type} eq "udef" ) {
+        return $self->cook_udef($rehref);
+    }
+
+    if ( $rehref->{re_type} eq "local" ) {
+        return $self->cook_local($rehref);
+    }
+
+    if ( $rehref->{re_type} eq "core" ) {
+        return $self->cook_core($rehref);
+    }
+    # unknown type
+    return undef;
+}
+    
+sub cook_udef ($self, $rehref) {
+    my $match = $rehref->{match};
+    # strip any word anchors present
+    $match =~ s/\\b//g;
+
+    # check if has spaces but mismatch for multiword
+    if ($match =~ / / and ! $rehref->{multiword}) {
+        $self->log->warn("$match contains a space, but multiword not set.  overridding multiword");
+        $rehref->{multiword} = 1;
+    }
+
+    my $re  = try {
+        ($rehref->{multiword}) 
+            ? qr{(\Q$match\E)}xims
+            : qr{\b(\Q$match\E)\b}xims
+    }
+    catch {
+        $self->log->error("REGEX : ".$rehref->{name});
+        $self->log->error("Failed creating re: $_");
+        $self->log->logdie(" ",{filter=>\&Dumper, value => $rehref});
+        return undef;
+    };
+    return $re;
+}
+
+sub cook_local ($self, $rehref) {
+    my $match = $rehref->{match};
+    my $re  = try {
+        qr{$match}xims;
+    }
+    catch {
+        $self->log->error("Failid creating re: $match");
+        return undef;
+    };
+    return $re;
+}
+
+sub cook_core ($self, $rehref) {
+    my $match = $rehref->{match};
+    my $re  = try {
+        qr{$match}xims;
+    }
+    catch {
+        $self->log->error("Failid creating re: $match");
+        return undef;
+    };
+    return $re;
+}
 
 sub core_regex_names ($self) {
     my @list    = (qw(
@@ -24,6 +169,7 @@ sub core_regex_names ($self) {
         sha256 
         message_id 
         email 
+        emailobsfucated
         lbsig 
         winregistry 
         files 
@@ -36,11 +182,13 @@ sub core_regex_names ($self) {
         countries
         sid
         useragent
-        snumber
-        suser
-        snlserver1
-        snlserver2
     ));
+#    move to local in db
+#    snumber
+#        suser
+#        snlserver1
+#        snlserver2
+#    ));
     # omitted uri on purpose, not ready for prime time
     return wantarray ? @list : \@list;
 };
@@ -50,8 +198,7 @@ sub get_core_regex_array ($self) {
     foreach my $name ($self->core_regex_names) {
         push @regexes, $self->$name;
     }
-    my @sorted = sort { $a->{re_order} <=> $b->{re_order} } @regexes;
-    return wantarray ? @sorted : \@sorted;
+    return wantarray ? @regexes : \@regexes;
 }
 
 sub cve ($self ) {
@@ -64,29 +211,12 @@ sub cve ($self ) {
             \b
         }xims,
         entity_type => 'cve',
-        regex_type  => 'core',
+        re_type  => 'core',
+        re_group    => 'core',
         re_order    => 10,
         multiword   => 0,
     };
 }
-
-sub useragent ($self) {
-    return {
-        name        => 'useragent',
-        description => 'Browser Useragent String',
-        regex       => qr{
-            \b
-            \((?<info>.*?)\)(\s|$)|(?<name>.*?)\/(?<version>.*?)(\s|$)/gm
-            \b
-        }xims,
-        entiry_type => 'user_agent',
-        regex_type  => 'core',
-        re_order    => 500,
-        multiword   => 1,
-    };
-}
-
-
 
 sub cidr ($self) {
     return {
@@ -105,7 +235,8 @@ sub cidr ($self) {
         \b
         }xims,
         entity_type => 'cidr',
-        regex_type  => 'core',
+        re_type  => 'core',
+        re_group    => 'core',
         re_order    => 20,
         multiword   => 0,
     };
@@ -124,11 +255,13 @@ sub ipv6_suricata ($self) {
             )
         }xims,
         entity_type => 'suricata_ipv6',
-        regex_type  => 'core',
+        re_type  => 'core',
+        re_group    => 'core',
         re_order    => 31,
         multiword   => 0,
     };
 }
+
 
 sub ipv6_standard ($self) {
     return {
@@ -138,7 +271,8 @@ sub ipv6_standard ($self) {
             (?:[A-F0-9]{1,4}:){7}[A-F0-9]{1,4}
         }xims,
         entity_type => 'ipv6',
-        regex_type  => 'core',
+        re_type  => 'core',
+        re_group    => 'core',
         re_order    => 32,
         multiword   => 0,
     };
@@ -153,7 +287,8 @@ sub ipv6_compressed ($self) {
             ( ([0-9A-F]{1,4}:){1,7}|: )( (:[0-9A-F]{1,4}){1,7}|: )
         }xims,
         entity_type => 'ipv6',
-        regex_type  => 'core',
+        re_type  => 'core',
+        re_group    => 'core',
         re_order    => 34,
         multiword   => 0,
     };
@@ -167,7 +302,8 @@ sub ipv6_cmp8colons ($self ) {
             (?:[A-F0-9]{1,4}:){7}:|:(:[A-F0-9]{1,4}){7}(?![:\w])
         }xims,
         entity_type => 'ipv6',
-        regex_type  => 'core',
+        re_type  => 'core',
+        re_group    => 'core',
         re_order    => 35,
         multiword   => 0,
     };
@@ -197,7 +333,8 @@ sub ipv6_mixed ($self ) {
           (?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])
         }xims,
         entity_type => 'ipv6mixed',
-        regex_type  => 'core',
+        re_type  => 'core',
+        re_group    => 'core',
         re_order    => 33,
         multiword   => 0,
     };
@@ -220,7 +357,8 @@ sub ipv4 ($self) {
             \b
             }xims,
             entity_type => 'ipaddr',
-            regex_type  => 'core',
+            re_type  => 'core',
+            re_group    => 'core',
             re_order    => 50,
             multiword   => 0,
         };
@@ -242,7 +380,8 @@ sub uuid1 ($self) {
                 [0-9a-f]{12}
             }xims,
             entity_type => 'uuid1',
-            regex_type  => 'core',
+            re_type  => 'core',
+            re_group    => 'core',
             re_order    => 60,
             multiword   => 0,
         };
@@ -264,7 +403,8 @@ sub clsid ($self) {
                 [a-fA-F0-9]{12}
             }xims,
             entity_type => 'clsid',
-            regex_type  => 'core',
+            re_type  => 'core',
+            re_group    => 'core',
             re_order    => 70,
             multiword   => 0,
         };
@@ -280,7 +420,8 @@ sub md5 ($self) {
             \b
         }xims,
         entity_type => 'md5',
-        regex_type  => 'core',
+        re_type  => 'core',
+        re_group    => 'core',
         re_order    => 80,
         multiword   => 0,
     };
@@ -296,7 +437,8 @@ sub sha1 ($self) {
             \b
         }xims,
         entity_type => 'sha1',
-        regex_type  => 'core',
+        re_type  => 'core',
+        re_group    => 'core',
         re_order    => 90,
         multiword   => 0,
     };
@@ -312,7 +454,8 @@ sub sha256 ($self) {
         \b
         }xims,
         entity_type => 'sha256',
-        regex_type  => 'core',
+        re_type  => 'core',
+        re_group    => 'core',
         re_order    => 100,
         multiword   => 0,
     };
@@ -330,7 +473,8 @@ sub message_id ($self) {
             (>|&gt;)        # ends with > or &gt;
         }xims,
         entity_type => 'message_id',
-        regex_type  => 'core',
+        re_type  => 'core',
+        re_group    => 'core',
         re_order    => 109,
         multiword   => 1,
     };
@@ -362,8 +506,42 @@ sub email ($self) {
         \b
         }xims,
         entity_type => 'email',
-        regex_type  => 'core',
+        re_type  => 'core',
+        re_group    => 'core',
         re_order    => 110,
+        multiword   => 0,
+    };
+}
+
+sub emailobsfucated ($self) {
+    return {
+        name        => 'email',
+        description => 'Find Email addresses obsfucted by replacing at symbol',
+        regex       => qr{
+        \b                                      # word boundary
+        (
+            (?:
+                # one or more of these
+                [\=a-z0-9!#$%&'*+/?^_`{|}~-]+
+                # zero or more of these
+                (?:\.[\=a-z0-9!#$%&'*+/?^_`{|}~-]+)*
+            )
+            \[at\]
+            (?:
+                (?!\d+\.\d+)
+                (?=.{4,255})
+                (?:
+                    (?:[a-zA-Z0-9-]{1,63}(?<!-)\(*\[*\{*\.\}*\]*\)*)+
+                    [a-zA-Z0-9-]{2,63}
+                )
+            )
+        )
+        \b
+        }xims,
+        entity_type => 'emailobsfucated',
+        re_type  => 'core',
+        re_group    => 'core',
+        re_order    => 111,
         multiword   => 0,
     };
 }
@@ -411,7 +589,8 @@ sub lbsig ($self) {
         \b
         }xims,
         entity_type => 'lbsig',
-        regex_type  => 'core',
+        re_type  => 'core',
+        re_group    => 'core',
         re_order    => 120,
         multiword   => 0,
     };
@@ -429,7 +608,8 @@ sub winregistry ($self) {
             \b
         }xims,
         entity_type => 'winregistry',
-        regex_type  => 'core',
+        re_type  => 'core',
+        re_group    => 'core',
         re_order    => 130,
         multiword   => 0,
     };
@@ -472,7 +652,8 @@ sub files ($self) {
         )\b
         }xims,
         entity_type => 'file',
-        regex_type  => 'core',
+        re_type  => 'core',
+        re_group    => 'core',
         re_order    => 150,
         multiword   => 0,
     };
@@ -502,7 +683,8 @@ sub domain_name ($self) {
             \b
         }xims,
         entity_type => 'domain',
-        regex_type  => 'core',
+        re_type  => 'core',
+        re_group    => 'core',
         re_order    => 160,
         multiword   => 0,
     };
@@ -521,7 +703,8 @@ sub appkey ($self) {
             \b
         }xims,
         entity_type => 'appkey',
-        regex_type  => 'core',
+        re_type  => 'core',
+        re_group    => 'core',
         re_order    => 170,
         multiword   => 0,
     };
@@ -541,7 +724,8 @@ sub angle_bracket_msgid ($self) {
         )
         }xims,
         entity_type => '',
-        regex_type  => 'core',
+        re_type  => 'core',
+        re_group    => 'core',
         re_order    => 180,
         multiword   => 0,
     };
@@ -558,7 +742,8 @@ sub jarm_hash ($self) {
             \b
         }xims,
         entity_type => 'jarm_hash',
-        regex_type  => 'core',
+        re_type  => 'core',
+        re_group    => 'core',
         re_order    => 190,
         multiword   => 0,
     };
@@ -574,7 +759,8 @@ sub sid ($self) {
             \b
         }xims,
         entity_type => 'jarm_hash',
-        regex_type  => 'core',
+        re_type  => 'core',
+        re_group    => 'core',
         re_order    => 190,
         multiword   => 0,
     };
@@ -590,7 +776,8 @@ sub snumber ($self) {
             \b
         }xims,
         entity_type => 'snumber',
-        regex_type  => 'core',
+        re_type  => 'core',
+        re_group    => 'core',
         re_order    => 200,
         multiword   => 0,
     };
@@ -606,7 +793,8 @@ sub suser ($self) {
             \b
         }xims,
         entity_type => 'suser',
-        regex_type  => 'core',
+        re_type  => 'core',
+        re_group    => 'core',
         re_order    => 210,
         multiword   => 1,
     };
@@ -618,11 +806,12 @@ sub snlserver1 ($self) {
         description => 'Sandia Server Name',
         regex   => qr{
             \b
-            as\d+snllx
+            as\d+snl(lx|tz|tc|tp|nt)
             \b
         }xims,
         entity_type => 'sandiaserver',
-        regex_type  => 'core',
+        re_type  => 'core',
+        re_group    => 'core',
         re_order    => 300,
         multiword   => 0,
     };
@@ -634,15 +823,34 @@ sub snlserver2 ($self) {
         description => 'Sandia Server Name',
         regex   => qr{
             \b
-            as\d+mcslx
+            as\d+mcs(lx|tz|tc|tp|nt)
             \b
         }xims,
         entity_type => 'sandiaserver',
-        regex_type  => 'core',
+        re_type  => 'core',
+        re_group    => 'core',
         re_order    => 300,
         multiword   => 0,
     };
 }
+
+sub useragent ($self) {
+    return {
+        name        => 'useragent',
+        description => 'Browser Useragent String',
+        regex       => qr{
+            \b
+            \((?<info>.*?)\)(\s|$)|(?<name>.*?)\/(?<version>.*?)(\s|$)/gm
+            \b
+        }xims,
+        entiry_type => 'user_agent',
+        re_type  => 'core',
+        re_group    => 'core',
+        re_order    => 500,
+        multiword   => 1,
+    };
+}
+
 
 # RE{URI} from REGEX::COMMON can not handle URI's with # in them
 # which renders it kind of useless.
@@ -652,20 +860,21 @@ sub snlserver2 ($self) {
 #        description => 'Find URIs',
 #        regex       => qr!($RE{URI})!,
 #        entity_type => 'uri',
-#        regex_type  => 'core',
+#        re_type  => 'core',
 #        re_order    => 156,
 #        multiword   => 1,
 #    };
 #}
 
 sub scot_uri ($self) {
-    my $hostname    = $self->scot_external_hostname;
+    my $hostname    = $self->scot_external_hostname // 'scot_host_not_set';
     return {
         name        => 'scot_uri',
         description => 'Find URIs to this SCOT instance and convert them to internal links',
         regex       => qr((http[s]://$hostname\/([#a-z0-9\/]*)\b))xims,
         entity_type => 'scot_uri',
-        regex_type  => 'core',
+        re_type  => 'core',
+        re_group    => 'core',
         re_order    => 133,
         multiword   => 1,
     };
@@ -684,7 +893,8 @@ sub internal_link ($self) {
             \b
         }xims,
         entity_type => 'internal_link',
-        regex_type  => 'core',
+        re_type  => 'core',
+        re_group    => 'core',
         re_order    => 155,
         multiword   => 0,
     };
@@ -904,12 +1114,11 @@ sub countries ($self) {
         description => 'Flair Country Names',
         regex       => qr{\b$rematchstr\b}ms,
         entity_type => 'country_name',
-        regex_type  => 'core',
+        re_type  => 'core',
+        re_group    => 'core',
         re_order    => 500,
         multiword   => 1,
     };
 }
 
-
 1;
-

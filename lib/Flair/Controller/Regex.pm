@@ -208,7 +208,8 @@ sub dt_ajax ($self) {
     my $ssp = $self->datatable->ssp(
         table   => 'regex',
         sql     => $db,
-        columns => [qw(regex_id name description match entity_type regex_type re_order multiword)],
+        columns => [qw(
+            regex_id name description match entity_type re_type re_group re_order multiword active)],
         debug   => 1,
         options => [
             {
@@ -232,9 +233,11 @@ sub dt_ajax ($self) {
                 },
             },
             { label   => 'EntityType',  db      => 'entity_type',   dt      => 4, },
-            { label   => 'RegexType',   db      => 'regex_type',    dt      => 5, },
-            { label   => 'RegexOrder',  db      => 're_order',      dt      => 6, },
-            { label   => 'multiword',   db      => 'multiword',     dt      => 7, },
+            { label   => 'RegexType',   db      => 're_type',       dt      => 5, },
+            { label   => 'RegexGroup',  db      => 're_group',      dt      => 6, },
+            { label   => 'RegexOrder',  db      => 're_order',      dt      => 7, },
+            { label   => 'multiword',   db      => 'multiword',     dt      => 8, },
+            { label   => 'active',      db      => 'active',        dt      => 9, },
         ],
     );
     return $self->render(json => $ssp);

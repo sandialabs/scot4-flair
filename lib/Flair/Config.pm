@@ -52,9 +52,9 @@ sub build_config () {
     set_default('S4FLAIR_DB_MIGRATION',     '/opt/flair/etc/flair.sqlite.sql');
     set_default('S4FLAIR_DB_FILE',          '/opt/flair/var/flair.db');
     # loads the core regexes
-    set_default('S4FLAIR_CORE_REGEXES',     '/opt/flair/etc/core_regexes.pl');
+    set_default('S4FLAIR_CORE_REGEXES',     '/opt/flair/etc/regex_sets/core.pl');
     # loads user defined regexes
-    set_default('S4FLAIR_UDEF_REGEXES',     '/opt/flair/etc/udef_regexes.pl');
+    set_default('S4FLAIR_UDEF_REGEXES',     '/opt/flair/etc/regex_sets/udef.pl');
     # if your scot api server is using an expired or invalid cert
     set_default('S4FLAIR_SCOT_API_INSECURE_SSL', 0);
     # the key to submit back to the scot api
@@ -62,13 +62,16 @@ sub build_config () {
     # uri base 
     set_default('S4FLAIR_SCOT_API_URI_ROOT', 'https://scot4/api/v1');
     set_default('S4FLAIR_SCOT_EXTERNAL_HOSTNAME', 'scot4');
+    set_default('S4FLAIR_REGEX_SET_DIR', '../etc/regex_sets');
+
     
-    my $logfile = join('/', $ENV{S4FLAIR_LOG_DIR}, $ENV{S4FLAIR_LOG_FILE});
+    my $logfile = join('/', $ENV{S4FLAIR_LOG_DIR}, $ENV{HOSTNAME}. '.' . $ENV{S4FLAIR_LOG_FILE});
 
     my $config  = {
         version     => $ENV{S4FLAIR_VERSION},
         mode        => $ENV{S4FLAIR_MODE},
         scot_external_hostname => $ENV{S4FLAIR_SCOT_EXTERNAL_HOSTNAME},
+        regex_set_dir   => $ENV{S4FLAIR_REGEX_SET_DIR},
         install     => {
             dbfile      => $ENV{S4FLAIR_DB_FILE},
             admin_user  => $ENV{S4FLAIR_ADMIN_USER},
@@ -90,6 +93,7 @@ log4perl.appender.FlairLog.mode = append
 log4perl.appender.FlairLog.filename = $logfile
 log4perl.appender.FlairLog.layout = Log::Log4perl::Layout::PatternLayout
 log4perl.appender.FlairLog.layout.ConversionPattern = %d %5p %15F{1}:%4L %m%n
+log4perl.appender.FlairLog.utf8 = 1
             },
         },
         hypnotoad   => {
@@ -108,6 +112,29 @@ log4perl.appender.FlairLog.layout.ConversionPattern = %d %5p %15F{1}:%4L %m%n
             uri         => $ENV{S4FLAIR_DB_URI},
             backend     => 'sqlite:'.$ENV{S4FLAIR_DB_FILE},
             migration   => $ENV{S4FLAIR_DB_MIGRATION},
+            model       => {
+                regex   => {
+                    default_list_options => {
+                        fields  => ['*'],
+                        where   => [],
+                        order   => [ '-id' ],
+                        limit   => 50,
+                        offset  => 0,
+                    },
+                    default_fetch_options   => {
+                        fields  => ['*'],
+                        where   => [],
+                        order   => [ '-id' ],
+                        limit   => 1,
+                        offset  => 0,
+                    },
+                },
+            },
+        },
+        newdb => {
+            dbytype      => 'mysql',
+            mysqluri     => $ENV{S4FLAIR_MYSQL_URI},
+            migration    => "/opt/flair/etc/flair.mysql.sql",
             model       => {
                 regex   => {
                     default_list_options => {

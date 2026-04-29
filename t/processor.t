@@ -1,6 +1,7 @@
 #!/opt/perl/bin/perl
 
 use Mojo::Base -strict;
+use Mojo::JSON qw(decode_json);
 use Test::Most;
 use Test::Mojo;
 use Data::Dumper::Concise;
@@ -73,9 +74,10 @@ is (ref($proc), "Flair::Processor", "instatiated processor") or die "Failed to i
  xss_tests();
  node_is_span_detection(); 
  node_is_noflair_section();
- sparkline_tests();
  multi_row_spark_alert();
  images_in_alerts();
+ sparkline_tests();
+ cell_array_tests();
 
  done_testing();
  exit 0;
@@ -138,7 +140,18 @@ sub merge_edb {
 sub arrayify_string {
     my $s = '["one", "two", "three"]';
     my @a = $proc->arrayify_string($s);
-    is (scalar(@a), 3, "Got correct number of elements from arrayified string")
+    is (scalar(@a), 3, "Got correct number of elements from arrayified string $s")
+    or die "Failed to arrayify string";
+    is ($a[0], "one", "Got correct item at position 0")
+    or die "Incorrect item at position 0";
+    is ($a[1], "two", "Got correct item at position 2")
+    or die "Incorrect item at position 2";
+    is ($a[2], "three", "Got correct item at position 3")
+    or die "Incorrect item at position 3";
+
+    $s = "['one', 'two', 'three']";
+    @a = $proc->arrayify_string($s);
+    is (scalar(@a), 3, "Got correct number of elements from arrayified string $s")
     or die "Failed to arrayify string";
     is ($a[0], "one", "Got correct item at position 0")
     or die "Incorrect item at position 0";
@@ -175,6 +188,15 @@ sub predefined_entity_detection {
     or die "Missed predefined entity";
     cmp_deeply($edb, {ipaddr => { '10.10.10.10' => 1 }}, "EDB updated correctly")
     or die "Incorrect update of edb";
+
+    my $bad_node = HTML::Element->new('span', 
+        class   => "entity",
+        'data-entity-type'  => 'ipaddr',
+        'data-entity-value' => '1.1.1.1',
+    );
+    $edb = {};
+    ok (! $proc->is_predefined_entity($bad_node, $edb), "Correctly skipped incorrectly formated predefined flair")
+        or die "Incorrect accept of malformed predefined entity";
 }
 
 sub leaf_node_detection {
@@ -332,9 +354,9 @@ EOF
     my $result  = $proc->flair_alert($alert, $fp);
     print Dumper($result);
     is ($result->{entities}->{domain}->{'dns101.registrar-servers.com'}, 1, "Domain Entity found");
-    my $expected_lri = '<div><table><tr></tr><tr><th>IOC</th><th>Indices</th><th>Hits</th><th>Sparkline</th></tr><tr><td style="border: 1px solid black; border-collapse: collapse;"><span class="entity domain" data-entity-type="domain" data-entity-value="dns101.registrar-servers.com">dns101.registrar-servers.com</span></td><td style="border: 1px solid black; border-collapse: collapse;">lc_nm_dns<br />dns_answer<br />lc_ca_dns<br />dns_query</td><td style="border: 1px solid black; border-collapse: collapse;">365</td><td style="border: 1px solid black; border-collapse: collapse;"><svg height="12" viewbox="0 -11 99 12" width="99" xmlns="http://www.w3.org/2000/svg"><polyline fill="none" points="0,-10 2,-0.25 4,-0.31 6,-0.37 8,-0.43 10,-0.31 12,-0.25 14,-0.25 16,-0.37 18,-0.37 20,-0.31 22,0 24,-0.19 26,-0.19 28,0 30,-0.12 32,-0.37 34,-0.31 36,-0.19 38,-0.06 40,-0.06 42,-0.25 44,-0.25 46,-0.31 48,-0.43 50,-0.43 52,-0.06 54,0 56,0 58,-0.19 60,-0.25 62,-0.37 64,-0.06 66,-0.19 68,-0.19 70,-0.37 72,-0.43 74,-0.37 76,-0.43 78,-0.49 80,-0.31 82,-0.25 84,-0.19 86,-0.43 88,-0.25 90,-0.25 92,-0.25 94,-0.25 96,-0.12 98,-0.37" stroke="blue" stroke-linecap="round" stroke-width="1"></polyline></svg></td></tr><tr><td style="border: 1px solid black; border-collapse: collapse;"><span class="entity ipaddr" data-entity-type="ipaddr" data-entity-value="146.70.53.153">146.70.53.153</span></td><td style="border: 1px solid black; border-collapse: collapse;">lc_nm_udp<br />lc_nm_tcp<br />zeek_conn_scan</td><td style="border: 1px solid black; border-collapse: collapse;">4</td><td style="border: 1px solid black; border-collapse: collapse;"><svg height="12" viewbox="0 -11 99 12" width="99" xmlns="http://www.w3.org/2000/svg"><polyline fill="none" points="0,-10 2,0 4,0 6,0 8,0 10,0 12,0 14,0 16,0 18,-3.33 20,0 22,0 24,0 26,0 28,0 30,0 32,0 34,0 36,0 38,0 40,0 42,0 44,0 46,0 48,0 50,0 52,0 54,0 56,0 58,0 60,0 62,0 64,0 66,0 68,0 70,0 72,0 74,0 76,0 78,0 80,0 82,0 84,0 86,0 88,0 90,0 92,0 94,0 96,0 98,0" stroke="blue" stroke-linecap="round" stroke-width="1"></polyline></svg></td></tr></table></div>';
+    my $exp_lri = '<div><table><tr></tr><tr> <th>IOC</th> <th>Indices</th> <th>Hits</th> <th>Sparkline</th></tr><tr> <td style="border: 1px solid black; border-collapse: collapse;"><span class="entity domain" data-entity-type="domain" data-entity-value="dns101.registrar-servers.com">dns101.registrar-servers.com</span></td> <td style="border: 1px solid black; border-collapse: collapse;">lc_nm_dns<br />dns_answer<br />lc_ca_dns<br />dns_query</td> <td style="border: 1px solid black; border-collapse: collapse;">365</td> <td style="border: 1px solid black; border-collapse: collapse;"><svg height="12" viewbox="0 -11 99 12" width="99" xmlns="http://www.w3.org/2000/svg"><polyline fill="none" points="0,-10 2,-0.25 4,-0.31 6,-0.37 8,-0.43 10,-0.31 12,-0.25 14,-0.25 16,-0.37 18,-0.37 20,-0.31 22,0 24,-0.19 26,-0.19 28,0 30,-0.12 32,-0.37 34,-0.31 36,-0.19 38,-0.06 40,-0.06 42,-0.25 44,-0.25 46,-0.31 48,-0.43 50,-0.43 52,-0.06 54,0 56,0 58,-0.19 60,-0.25 62,-0.37 64,-0.06 66,-0.19 68,-0.19 70,-0.37 72,-0.43 74,-0.37 76,-0.43 78,-0.49 80,-0.31 82,-0.25 84,-0.19 86,-0.43 88,-0.25 90,-0.25 92,-0.25 94,-0.25 96,-0.12 98,-0.37" stroke="blue" stroke-linecap="round" stroke-width="1"></polyline></svg></td></tr><tr> <td style="border: 1px solid black; border-collapse: collapse;"><span class="entity ipaddr" data-entity-type="ipaddr" data-entity-value="146.70.53.153">146.70.53.153</span></td> <td style="border: 1px solid black; border-collapse: collapse;">lc_nm_udp<br />lc_nm_tcp<br />zeek_conn_scan</td> <td style="border: 1px solid black; border-collapse: collapse;">4</td> <td style="border: 1px solid black; border-collapse: collapse;"><svg height="12" viewbox="0 -11 99 12" width="99" xmlns="http://www.w3.org/2000/svg"><polyline fill="none" points="0,-10 2,0 4,0 6,0 8,0 10,0 12,0 14,0 16,0 18,-3.33 20,0 22,0 24,0 26,0 28,0 30,0 32,0 34,0 36,0 38,0 40,0 42,0 44,0 46,0 48,0 50,0 52,0 54,0 56,0 58,0 60,0 62,0 64,0 66,0 68,0 70,0 72,0 74,0 76,0 78,0 80,0 82,0 84,0 86,0 88,0 90,0 92,0 94,0 96,0 98,0" stroke="blue" stroke-linecap="round" stroke-width="1"></polyline></svg></td></tr></table></div>';
     my $got = $result->{flair_data}->{"LRI Hit Information"}->[0];
-    is ($expected_lri, $got, "Created table correctly with sparkline");
+    is ($got, $exp_lri, "Created table correctly with sparkline");
 
 #    my @e_array = split(//, $expected_lri);
 #    my @g_array = split(//, $got);
@@ -396,6 +418,39 @@ sub udef_tests {
     $db->regex->create({
 
     });
+}
+
+sub cell_array_tests {
+    my $json_text   = q|
+{
+    "servers": [
+        "autodiscover.sandia.gov",
+        "communicate.sandia.gov"
+    ],
+    "dest_ips": [
+        "<span class=\"entity\" data-entity-type=\"ipaddr\" data-entity-value=\"132.175.252.129\">132.175.252.129</span>",
+        "<span class=\"entity\" data-entity-type=\"ipaddr\" data-entity-value=\"198.102.154.16\">198.102.154.16</span>"
+    ],
+    "status": [
+        "internal_server_error",
+        "moved_permanently"
+    ]
+}
+|;
+
+    my $href    = decode_json($json_text);
+    my $alert   = {
+        id  => 1,
+        alertgroup => 1,
+        alerts  => [ $href ],
+    };
+    my $fp      = {};
+
+    my $results = $proc->flair_alert($alert, $fp);
+
+    print Dumper($results);
+
+
 }
 
 

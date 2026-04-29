@@ -28,7 +28,6 @@ sub list ($self, $opts) {
     my $res        = $collection->to_array;
     $self->log->trace("list result ",{filter=>\&Dumper, value=>$res});
     return $res;
-
 }
 
 sub fetch ($self, $id) {

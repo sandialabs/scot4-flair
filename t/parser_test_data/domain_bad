@@ -1,0 +1,15 @@
+{
+    text    => <<~EOF,
+        https://go.gak8goo.au/journal/123
+        EOF
+
+    expect  => <<~EOF,
+        https://<span class="entity domain" data-entity-type="domain" data-entity-value="go.gak8goo.au">go.gak8goo.au</span>/journal/123
+        EOF
+
+    entities    => {
+        domain  => {
+            'go.gak8goo.au'  => 1
+        },
+    },
+}

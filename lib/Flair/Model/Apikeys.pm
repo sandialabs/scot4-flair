@@ -13,10 +13,22 @@ has 'tablename' => 'apikeys';
 
 sub create ($self, $apikey_href) {
     $self->log->debug("Creating APIKEY");
-    return $self->create_sqlite($apikey_href);
+    return $self->create_sqlite($apikey_href) if ($self->dbtype eq "sqlite");
+    return $self->create_mysql($apikey_href) if ($self->dbtype eq "mysql");
 }
 
 sub create_sqlite ($self, $apikey_href) {
+    my $sql     = $self->getSAL;
+    my $href    = dclone($apikey_href);
+    my ($stmt, @bind) = $sql->insert($self->tablename,
+                                     $href);
+    $self->log_sql(__PACKAGE__, $stmt, @bind);
+
+    my $id  = $self->do_query($stmt, @bind)->last_insert_id;
+    return $self->fetch($id);
+}
+
+sub create_mysql ($self, $apikey_href) {
     my $sql     = $self->getSAL;
     my $href    = dclone($apikey_href);
     my ($stmt, @bind) = $sql->insert($self->tablename,
@@ -64,7 +76,8 @@ sub fetch ($self, $id) {
 
 sub update ($self, $id, $update_href) {
     $self->log->debug("performing update");
-    return $self->update_sqlite($id, $update_href);
+    return $self->update_sqlite($id, $update_href) if ($self->dbtype eq 'sqlite');
+    return $self->update_mysql($id, $update_href) if ($self->dbtype eq 'mysql');
 }
 
 sub update_sqlite ($self, $id, $update_href) {
@@ -79,11 +92,38 @@ sub update_sqlite ($self, $id, $update_href) {
     return $self->fetch($id);
 }
 
+sub update_mysql ($self, $id, $update_href) {
+    my $sql           = $self->getSAL;
+    my $where         = { apikey_id => $id };
+    my $href          = dclone($update_href);
+    $href->{'`apikey`'}  = delete $href->{apikey};
+    my ($stmt, @bind) = $sql->update($self->tablename, $href, $where);
+    $self->log_sql(__PACKAGE__, $stmt, @bind);
+
+    my $result  = $self->do_query($stmt, @bind);
+    return $self->fetch($id);
+}
+
 sub patch ($self, $id, $update_href) {
-    return $self->patch_sqlite($id, $update_href);
+    return $self->patch_sqlite($id, $update_href) if ($self->dbtype eq "sqlite");
+    return $self->patch_mysql($id, $update_href) if ($self->dbtype eq "mysql");
 }
 
 sub patch_sqlite ($self, $id, $update_href) {
+    my $sql           = $self->getSAL;
+    my $where         = { apikey_id => $id };
+    my $href          = dclone($update_href);
+    $href->{'`apikey`'}  = delete $href->{apikey};
+    my ($stmt, @bind) = $sql->update($self->tablename,
+                                     $href,
+                                     $where);
+    $self->log_sql(__PACKAGE__, $stmt, @bind);
+
+    my $result  = $self->do_query($stmt, @bind);
+    return $self->fetch($id);
+}
+
+sub patch_mysql ($self, $id, $update_href) {
     my $sql           = $self->getSAL;
     my $where         = { apikey_id => $id };
     my $href          = dclone($update_href);
