@@ -86,6 +86,12 @@ sub create_mysql ($self, $regex_href) {
     }
 
     $href->{'`match`'}  = delete $href->{match};
+
+    # catch the api using old ways
+    if (defined $href->{regex_type}) {
+        $href->{re_type} = delete $href->{regex_type};
+    }
+
     my ($stmt, @bind)   = $sql->insert($self->tablename, $href);
     $self->log_sql(__PACKAGE__, $stmt, @bind);
     my $id  = $self->do_query($stmt, @bind)->last_insert_id;
