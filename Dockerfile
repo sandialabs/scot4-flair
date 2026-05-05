@@ -1,5 +1,5 @@
 # Start with debian:bookworm image with scot4 perl installed
-FROM ghcr.io/sandialabs/scot4-perl-builder@sha256:6a92390d96baf3c1ad73fcdf9af5047a36e880c5ce026c91cff98d0064e2e67f
+FROM ghcr.io/sandialabs/scot4-perl-builder:main
 
 WORKDIR /opt/flair
 
