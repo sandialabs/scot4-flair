@@ -91,6 +91,9 @@ sub create_mysql ($self, $regex_href) {
     if (defined $href->{regex_type}) {
         $href->{re_type} = delete $href->{regex_type};
     }
+    if (! defined $href->{re_group} or $href->{re_group} eq "") {
+        $href->{re_group} = "udef";
+    }
 
     my ($stmt, @bind)   = $sql->insert($self->tablename, $href);
     $self->log_sql(__PACKAGE__, $stmt, @bind);
