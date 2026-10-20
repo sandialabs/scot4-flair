@@ -23,7 +23,8 @@ CREATE TABLE IF NOT EXISTS regex (
     description TEXT NOT NULL,
     match       TEXT NOT NULL,
     entity_type TEXT NOT NULL,
-    regex_type  TEXT CHECK(regex_type in ('core', 'udef')) NOT NULL,
+    re_type  TEXT CHECK(re_type in ('core', 'udef', 'local')) NOT NULL,
+    re_group TEXT,
     re_order    INT,
     multiword   BOOLEAN
 );

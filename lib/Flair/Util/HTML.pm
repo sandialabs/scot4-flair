@@ -84,9 +84,10 @@ sub generate_span ($type, $item) {
     # we can specify limits to what encode_entities changes.  (see perldoc HTML::Entities)
     # e.g. encode_entities($foo, '<>&') would only replace < > and &.
     my $encoded = encode_entities($item);
+    my $lcitem  = lc($item);
     return qq|<span class="entity"|.
            qq| data-entity-type="$type"|.
-           qq| data-entity-value="$item">$encoded</span>|;
+           qq| data-entity-value="$lcitem">$encoded</span>|;
 }
 
 sub create_sentinel_flair ($url) {

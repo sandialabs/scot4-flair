@@ -52,23 +52,26 @@ my $flair_user  = $config->{install}->{flair_user};
 my $flair_group = $config->{install}->{flair_group};
 my $core_regexes = $config->{install}->{core_regexes_file};
 my $udef_regexes = $config->{install}->{udef_regexes_file};
+my $local_regexes = $config->{install}->{local_regexes_file};
 my $db_migration = $config->{install}->{db_migration};
 my $logfile      = $config->{log}->{config};
 my $udefnow;
 
 my $wipedb;
 my $clean;
+my $loadre;
 
 GetOptions(
     'clean'     => \$clean,
     'wipedb'    => \$wipedb,
+    'loadre=s'    => \$loadre,
 ) or die <<EOF;
 
-    USAGE: $0 [--clean] [--wipedb] [--udef /user/defined/flair/regexes.pl ]
+    USAGE: $0 [--clean] [--wipedb] [--loadre ./etc/regex_sets/regexe_set.pl ]
 
         --clean         Removes install dir prior to install
         --wipedb        Deletes SQLite DB and re-initializes
-        --udef file     load regex hash in file of format 
+        --loadre file     load regex hash in file of format 
 
             { 
                 regexes => [ 
@@ -133,9 +136,12 @@ die "Invalid Install Dir" if ($instdir eq '/' or $instdir eq ' ' or $instdir eq 
 #    system("touch $dbfile");
 #}
 
+my $db_config = defined $config->{newdb}->{mysqluri}
+    ? $config->{newdb}
+    : $config->{database};
 my $db  = Flair::Db->new(
     log     => $log,
-    config  => $config->{newdb},
+    config  => $db_config,
     #    config  => {
     #    uri         => 'file:'.$dbfile,
     #    model       => {},
@@ -143,6 +149,12 @@ my $db  = Flair::Db->new(
     #}
 );
 die "Unable to connect to $dbfile" if (! defined $db);
+
+if ($loadre) {
+    upsert_regexes($loadre);
+    exit 0;
+}
+
 
 if ($wipedb) {
     unlink $dbfile || die "Unable to remove $dbfile";
@@ -159,6 +171,9 @@ if ($wipedb) {
     upsert_regexes($core_regexes);
     if (-e $udef_regexes) {
         upsert_regexes($udef_regexes);
+    }
+    if (-e $local_regexes) {
+        upsert_regexes($local_regexes);
     }
 }
 
@@ -186,4 +201,3 @@ sub upsert_regexes ($file) {
         $log->debug("regex_id          : ".$href->{regex_id});
     }
 }
-

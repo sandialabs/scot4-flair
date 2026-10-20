@@ -29,7 +29,7 @@ has 're_types'  => sub ($self) {
 };
 
 has 're_groups' => sub ($self) {
-    return [ 'core', 'udef', 'sandia' ];
+    return [ 'core', 'udef', 'sandia', 'supplier' ];
 };
 
 has 'regex_util'    => sub ($self) {

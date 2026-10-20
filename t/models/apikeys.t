@@ -18,13 +18,13 @@ $log->info("$0 begins");
 $log->level($TRACE);
 
 my @configs  = (
-    {
-        dbtype  => 'sqlite',
-        uri     => 'flairtest.db',
-        model   => {
-        },
-        migration   => '../../etc/test.sqlite.sql',
-    },
+  #{
+      #dbtype  => 'sqlite',
+        #    uri     => 'flairtest.db',
+        #    model   => {
+             #},
+        #    migration   => '../../etc/test.sqlite.sql',
+        #},
     #{
     #    dbtype  => 'pg',
     #    uri     => 'postgresql://flairtest:flair1234@localhost/flairtest',
@@ -32,13 +32,13 @@ my @configs  = (
     #    },
     #    migration   => '../../etc/flair.pg.sql',
     #},
-    #{
-    #    dbtype  => 'mysql',
-    #    uri     => 'mysql://flairtest:flair1234@localhost/flairtest',
-    #    model   => {
-    #    },
-    #    migration   => '../../etc/flair.mysql.sql',
-    #},
+    {
+        dbtype  => 'mysql',
+        uri     => 'mariadb://flairtest:flair1234@localhost/flairtest',
+        model   => {
+        },
+        migration   => '../../etc/flair.mysql.sql',
+    },
 );
 
 my $target_type = {

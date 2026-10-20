@@ -7,7 +7,7 @@
       multiword => 1,
       name => "b&amp;h photo",
       re_order => 100,
-      regex_type => "udef",
+      re_type => "udef",
       re_group  => "supplier",
       active => 1,
     },

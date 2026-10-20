@@ -181,13 +181,14 @@ sub core_regex_names ($self) {
         internal_link
         countries
         sid
-        useragent
+        cisa_ics
     ));
 #    move to local in db
 #    snumber
 #        suser
 #        snlserver1
 #        snlserver2
+#        useragent
 #    ));
     # omitted uri on purpose, not ready for prime time
     return wantarray ? @list : \@list;
@@ -215,6 +216,23 @@ sub cve ($self ) {
         re_group    => 'core',
         re_order    => 10,
         multiword   => 0,
+    };
+}
+
+sub icsa($self) {
+    return {
+        name            => 'isca',
+        description     => 'CISA Induxtrial Control Systems Advisories',
+        regex           => qr{
+            \b 
+            (ICSA[M]*-(\d{2})-(\d{3})-(\d{2}))
+            \b
+        }xims,
+        entity_type => 'isca',
+        re_type     => 'core',
+        re_group    => 'core',
+        re_order    => 20,
+        mulitword   => 0,
     };
 }
 
@@ -834,6 +852,7 @@ sub snlserver2 ($self) {
     };
 }
 
+# notoriously buggy not reliable at all
 sub useragent ($self) {
     return {
         name        => 'useragent',
@@ -1118,6 +1137,25 @@ sub countries ($self) {
         re_group    => 'core',
         re_order    => 500,
         multiword   => 1,
+    };
+
+
+}
+
+sub cisa_ics ($self) {
+    return {
+        name    => 'cisa_ics',
+        description => 'Cisa ICSA/ICSMA Advisory',
+        regex   => qr{
+            \b
+            (?:ICSA|ICSMA)-\d{2}-\d{3}-\d{2}
+            \b
+        }xims,
+        entity_type => 'cisa_advisory',
+        re_type  => 'core',
+        re_group    => 'core',
+        re_order    => 400,
+        multiword   => 0,
     };
 }
 
