@@ -1,6 +1,7 @@
 package Flair::Controller::Auth;
 use Mojo::Base 'Mojolicious::Controller', -signatures;
 use Crypt::PBKDF2;
+use MIME::Base64 qw(decode_base64);
 use Data::Dumper::Concise;
 use lib '../../../lib';
 use Flair::Util::Crypt qw(compare_pass);
@@ -86,7 +87,7 @@ sub valid_mojo_session ($self) {
 sub valid_header ($self) {
     my $headers = $self->req->headers;
     my $header  = $headers->header('authorization');
-    $self->log->debug("Authorization header = $header");
+    # $self->log->debug("Authorization header = $header");
     
     unless (defined $header) {
         $self->log->info("No authorization header present");
@@ -125,6 +126,11 @@ sub validate_basic ($self, $value) {
     }
     $self->log->debug("Failed basic auth");
     return undef;
+}
+
+sub generate_pbkdf ($self, $pass) {
+    # not really using pbkdf2 in this and its going away soon
+    return $pass;
 }
 
 sub get_user_pwhash ($self, $user) {

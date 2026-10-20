@@ -13,31 +13,30 @@ my $log = get_logger('Flair');
 $log->level($TRACE);
 
 my $config = {
-    dbtype  => 'sqlite',
-    dbfile  => '/home/tbruner/flair.db',
-    uri     => 'file:/home/tbruner/flair.db',
-    model   => {},
+    dbtype => 'sqlite',
+    dbfile => '/home/scotuser/flair.db',
+    uri    => 'file:/home/scotuser/flair.db',
+    model  => {},
 };
 
 my $db = Flair::Db->new(
-    log     => $log,
-    config  => $config,
+    log    => $log,
+    config => $config,
 );
 
-
 foreach my $year (qw(2025)) {
-    my $totals = $db->metrics->get_monthly_totals({year => $year });
-    my $outname = "/home/tbruner/$year-2.stats.csv";
-    open (my $fh, ">", $outname) or die "$!";
-    my $header =  "metric,day,total\n";
+    my $totals  = $db->metrics->get_monthly_totals( { year => $year } );
+    my $outname = "/home/scotuser/$year-2.stats.csv";
+    open( my $fh, ">", $outname ) or die "$!";
+    my $header = "metric,day,total\n";
     print $fh $header;
-    foreach my $metric (sort keys %$totals) {
-        foreach my $day (sort keys %{$totals->{$metric}}) {
-            my $line = join(',', $metric, $day, $totals->{$metric}->{$day})."\n";
+    foreach my $metric ( sort keys %$totals ) {
+        foreach my $day ( sort keys %{ $totals->{$metric} } ) {
+            my $line =
+              join( ',', $metric, $day, $totals->{$metric}->{$day} ) . "\n";
             print $fh $line;
         }
     }
     close($fh);
 }
-
 

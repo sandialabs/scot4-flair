@@ -1,0 +1,15 @@
+{
+    text    => <<~EOF,
+        Foo ICSMA-26-022-01 Bar
+        EOF
+
+    expect  => <<~EOF,
+        Foo <span class="entity cisa_advisory" data-entity-type="cisa_advisory" data-entity-value="icsma-26-022-01">ICSMA-26-022-01</span> Bar
+        EOF
+
+    entities    => {
+        cisa_advisory  => {
+            "icsma-26-022-01" => 1
+        },
+    },
+}

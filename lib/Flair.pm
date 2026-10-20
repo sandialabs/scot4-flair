@@ -43,7 +43,7 @@ sub startup ($self) {
 
     # look for newer mysql config which implies we have migrated to using that
     my $dbconfig = $config_href->{database};
-    if (defined $config_href->{newdb}) {
+    if (defined $config_href->{newdb}->{mysqluri}) {
         $self->log->debug("using new mysql db config");
         $dbconfig = $config_href->{newdb};
     }
@@ -131,7 +131,7 @@ sub startup ($self) {
     });
 
     $self->plugin('SwaggerUI' => {
-        route   => $self->routes->any('/swagger'),
+        route   => $auth->any('/swagger'),
         url     => 'api.yaml',
     });
 
@@ -190,9 +190,6 @@ sub log_server_startup ($self) {
         "| MOJO  : ".$Mojolicious::VERSION,
         "| Mode  : ".$self->mode,
         "| DB    : ".$self->config->{database}->{uri},
-        # "| INC   : ".$inc,
-        # "| MOJO_REVERSE_PROXY : ".$ENV{MOJO_REVERSE_PROXY},
-        "| CONFIG: ", $cfg,
         "==========================================================",
     );
     $self->log->info($message);

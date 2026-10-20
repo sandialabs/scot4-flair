@@ -1,0 +1,12 @@
+{
+    text    => <<~'EOF',
+        This is not a CIDR block OPTIONS, GET, PUT.
+        EOF
+
+    expect  => <<~'EOF',
+        This is not a CIDR block OPTIONS, GET, PUT.
+        EOF
+
+    entities    => {
+    },
+}

@@ -8,11 +8,19 @@ use MIME::Base64;
 use Digest::MD5 qw(md5_hex);
 
 has scot_version => sub { 3; };
-has insec   => sub {1;};
-has download_dir => '/tmp';
 has 'log';
 has 'scotapi';
 has 'config';
+has insec   => sub ($self) {
+    # set to 1 to disable ssl checks  
+    return $self->config->{images}->{insecure};
+}; 
+has 'max_redirects' => sub ($self) {
+    return $self->config->{images}->{max_redirects};
+};
+has download_dir => sub ($self) {
+    return $self->config->{images}->{download_dir};
+};
 
 # scan flair text for embedded images
 # either data:uri or <img>
@@ -67,6 +75,7 @@ sub obtain_image ($self, $image) {
         $self->log->debug("img src sanitized, unable to further process");
         return undef;
     }
+  
     return ($link =~ m/^data:image/ ) ? $self->convert_data_uri($image)
                                       : $self->download_image($image);
 }
@@ -94,7 +103,8 @@ sub download_image ($self, $image) {
     my $ua  = Mojo::UserAgent->new();
     $ua->proxy->detect;
     my $insec   = $self->insec;
-    my $result  = $ua->insecure($insec)->max_redirects(5)->get($link)->result;
+    my $maxredir = $self->max_redirects;
+    my $result  = $ua->insecure($insec)->max_redirects($maxredir)->get($link)->result;
 
     if ($result->is_success) {
         my $asset   = $result->content->asset;
